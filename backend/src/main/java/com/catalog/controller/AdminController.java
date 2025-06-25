@@ -33,7 +33,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/admin")
 @CrossOrigin(origins = "*")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
 public class AdminController {
     
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);

@@ -71,7 +71,7 @@ public class ProductImageController {
     
     // Admin endpoints (require authentication)
     @GetMapping("/api/admin/products/{productId}/images")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
     @Transactional(readOnly = true)
     public ResponseEntity<?> getProductImages(@PathVariable Long productId) {
         try {
@@ -104,7 +104,7 @@ public class ProductImageController {
     }
     
     @PostMapping("/api/admin/products/{productId}/images")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
     @Transactional
     public ResponseEntity<?> uploadProductImage(
             @PathVariable Long productId,
@@ -165,7 +165,7 @@ public class ProductImageController {
     }
     
     @PutMapping("/api/admin/products/{productId}/images/{imageId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
     @Transactional
     public ResponseEntity<?> updateProductImage(
             @PathVariable Long productId,
@@ -200,7 +200,7 @@ public class ProductImageController {
     }
     
     @PutMapping("/api/admin/products/{productId}/images/{imageId}/primary")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
     @Transactional
     public ResponseEntity<?> setPrimaryImage(@PathVariable Long productId, @PathVariable Long imageId) {
         try {
@@ -229,7 +229,7 @@ public class ProductImageController {
     }
     
     @DeleteMapping("/api/admin/products/{productId}/images/{imageId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
     @Transactional
     public ResponseEntity<?> deleteProductImage(@PathVariable Long productId, @PathVariable Long imageId) {
         try {
