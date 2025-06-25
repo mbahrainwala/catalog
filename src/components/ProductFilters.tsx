@@ -21,9 +21,10 @@ interface FilterValue {
 
 interface ProductFiltersProps {
   onFiltersChange: (filters: Record<string, string[]>) => void;
+  selectedCategory: string;
 }
 
-const ProductFilters: React.FC<ProductFiltersProps> = ({ onFiltersChange }) => {
+const ProductFilters: React.FC<ProductFiltersProps> = ({ onFiltersChange, selectedCategory }) => {
   const [filters, setFilters] = useState<Filter[]>([]);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
   const [expandedFilters, setExpandedFilters] = useState<Set<string>>(new Set());
@@ -31,7 +32,7 @@ const ProductFilters: React.FC<ProductFiltersProps> = ({ onFiltersChange }) => {
 
   useEffect(() => {
     fetchFilters();
-  }, []);
+  }, [selectedCategory]);
 
   useEffect(() => {
     onFiltersChange(selectedFilters);
@@ -39,14 +40,27 @@ const ProductFilters: React.FC<ProductFiltersProps> = ({ onFiltersChange }) => {
 
   const fetchFilters = async () => {
     try {
-      const response = await fetch('/api/filters');
+      const categoryParam = selectedCategory !== 'all' ? `?category=${encodeURIComponent(selectedCategory)}` : '';
+      const response = await fetch(`/api/filters${categoryParam}`);
       if (response.ok) {
         const data = await response.json();
-        setFilters(data);
+        
+        // Only include filters that have active values
+        const filtersWithActiveValues = data.filter((filter: Filter) => 
+          filter.active && 
+          filter.filterValues && 
+          filter.filterValues.length > 0 && 
+          filter.filterValues.some((value: FilterValue) => value.active)
+        );
+        
+        setFilters(filtersWithActiveValues);
         
         // Auto-expand all filters initially
-        const filterNames = data.map((filter: Filter) => filter.name);
+        const filterNames = filtersWithActiveValues.map((filter: Filter) => filter.name);
         setExpandedFilters(new Set(filterNames));
+        
+        // Clear selected filters when category changes
+        setSelectedFilters({});
       }
     } catch (err) {
       console.error('Failed to fetch filters:', err);
@@ -139,6 +153,11 @@ const ProductFilters: React.FC<ProductFiltersProps> = ({ onFiltersChange }) => {
             </button>
           )}
         </div>
+        {selectedCategory !== 'all' && (
+          <p className="text-sm text-gray-500 mt-1">
+            Filters for {selectedCategory}
+          </p>
+        )}
       </div>
 
       <div className="p-4 space-y-4">
@@ -172,63 +191,67 @@ const ProductFilters: React.FC<ProductFiltersProps> = ({ onFiltersChange }) => {
         )}
 
         {/* Filter Groups */}
-        {filters.map((filter) => (
-          <div key={filter.id} className="border-b border-gray-100 last:border-b-0 pb-4 last:pb-0">
-            <button
-              onClick={() => toggleFilterExpansion(filter.name)}
-              className="flex items-center justify-between w-full text-left"
-            >
-              <div className="flex items-center space-x-2">
-                <h4 className="text-sm font-medium text-gray-900">{filter.displayName}</h4>
-                {selectedFilters[filter.name] && (
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                    {selectedFilters[filter.name].length}
-                  </span>
-                )}
-              </div>
-              {expandedFilters.has(filter.name) ? (
-                <ChevronUp className="h-4 w-4 text-gray-500" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-gray-500" />
-              )}
-            </button>
+        {filters.map((filter) => {
+          // Only show active filter values
+          const activeFilterValues = filter.filterValues.filter(fv => fv.active);
+          
+          if (activeFilterValues.length === 0) {
+            return null;
+          }
 
-            {expandedFilters.has(filter.name) && (
-              <div className="mt-3 space-y-2">
-                {filter.filterValues
-                  .filter(fv => fv.active)
-                  .sort((a, b) => a.displayOrder - b.displayOrder)
-                  .map((filterValue) => (
-                    <label
-                      key={filterValue.id}
-                      className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
+          return (
+            <div key={filter.id} className="border-b border-gray-100 last:border-b-0 pb-4 last:pb-0">
+              <button
+                onClick={() => toggleFilterExpansion(filter.name)}
+                className="flex items-center justify-between w-full text-left"
+              >
+                <div className="flex items-center space-x-2">
+                  <h4 className="text-sm font-medium text-gray-900">{filter.displayName}</h4>
+                  {selectedFilters[filter.name] && (
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                      {selectedFilters[filter.name].length}
+                    </span>
+                  )}
+                </div>
+                {expandedFilters.has(filter.name) ? (
+                  <ChevronUp className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                )}
+              </button>
+
+              {expandedFilters.has(filter.name) && (
+                <div className="mt-3 space-y-2">
+                  {activeFilterValues
+                    .sort((a, b) => a.displayOrder - b.displayOrder)
+                    .map((filterValue) => (
+                      <label
+                        key={filterValue.id}
+                        className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedFilters[filter.name]?.includes(filterValue.value) || false}
+                          onChange={(e) => handleFilterValueChange(filter.name, filterValue.value, e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{filterValue.displayValue}</span>
+                      </label>
+                    ))}
+                  
+                  {selectedFilters[filter.name] && selectedFilters[filter.name].length > 0 && (
+                    <button
+                      onClick={() => clearFilter(filter.name)}
+                      className="text-xs text-blue-600 hover:text-blue-700 mt-2"
                     >
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters[filter.name]?.includes(filterValue.value) || false}
-                        onChange={(e) => handleFilterValueChange(filter.name, filterValue.value, e.target.checked)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">{filterValue.displayValue}</span>
-                    </label>
-                  ))}
-                
-                {filter.filterValues.filter(fv => fv.active).length === 0 && (
-                  <p className="text-sm text-gray-500 italic">No options available</p>
-                )}
-                
-                {selectedFilters[filter.name] && selectedFilters[filter.name].length > 0 && (
-                  <button
-                    onClick={() => clearFilter(filter.name)}
-                    className="text-xs text-blue-600 hover:text-blue-700 mt-2"
-                  >
-                    Clear {filter.displayName}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+                      Clear {filter.displayName}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

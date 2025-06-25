@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Settings } from 'lucide-react';
 
 interface Category {
   id?: number;
   name: string;
+  description: string;
+  displayOrder: number;
+  active: boolean;
+}
+
+interface Filter {
+  id: number;
+  name: string;
+  displayName: string;
   description: string;
   displayOrder: number;
   active: boolean;
@@ -15,9 +24,12 @@ interface CategoryManagerProps {
 
 const CategoryManager: React.FC<CategoryManagerProps> = ({ token }) => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [availableFilters, setAvailableFilters] = useState<Filter[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [managingFiltersFor, setManagingFiltersFor] = useState<number | null>(null);
+  const [categoryFilters, setCategoryFilters] = useState<number[]>([]);
   const [error, setError] = useState('');
 
   const emptyCategory: Category = {
@@ -29,6 +41,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ token }) => {
 
   useEffect(() => {
     fetchCategories();
+    fetchAvailableFilters();
   }, []);
 
   const fetchCategories = async () => {
@@ -49,6 +62,40 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ token }) => {
       setError('Network error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableFilters = async () => {
+    try {
+      const response = await fetch('/api/admin/filters', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableFilters(data.filter((filter: Filter) => filter.active));
+      }
+    } catch (err) {
+      console.error('Failed to fetch filters:', err);
+    }
+  };
+
+  const fetchCategoryFilters = async (categoryId: number) => {
+    try {
+      const response = await fetch(`/api/admin/categories/${categoryId}/filters`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCategoryFilters(data.map((filter: Filter) => filter.id));
+      }
+    } catch (err) {
+      console.error('Failed to fetch category filters:', err);
     }
   };
 
@@ -100,6 +147,44 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ token }) => {
       }
     } catch (err) {
       setError('Network error');
+    }
+  };
+
+  const handleManageFilters = (categoryId: number) => {
+    setManagingFiltersFor(categoryId);
+    fetchCategoryFilters(categoryId);
+  };
+
+  const handleSaveCategoryFilters = async () => {
+    if (!managingFiltersFor) return;
+
+    try {
+      const response = await fetch(`/api/admin/categories/${managingFiltersFor}/filters`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(categoryFilters),
+      });
+
+      if (response.ok) {
+        setManagingFiltersFor(null);
+        setCategoryFilters([]);
+        setError('');
+      } else {
+        setError('Failed to update category filters');
+      }
+    } catch (err) {
+      setError('Network error');
+    }
+  };
+
+  const handleFilterToggle = (filterId: number, checked: boolean) => {
+    if (checked) {
+      setCategoryFilters(prev => [...prev, filterId]);
+    } else {
+      setCategoryFilters(prev => prev.filter(id => id !== filterId));
     }
   };
 
@@ -209,6 +294,77 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ token }) => {
     );
   };
 
+  const FilterManagementModal: React.FC<{ categoryId: number; onClose: () => void }> = ({ categoryId, onClose }) => {
+    const category = categories.find(c => c.id === categoryId);
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <h3 className="text-xl font-bold text-gray-900">
+              Manage Filters for "{category?.name}"
+            </h3>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+          </div>
+
+          <div className="p-6 overflow-y-auto max-h-96">
+            <p className="text-sm text-gray-600 mb-4">
+              Select which filters should be available for products in this category:
+            </p>
+            
+            <div className="space-y-3">
+              {availableFilters.map(filter => (
+                <label
+                  key={filter.id}
+                  className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={categoryFilters.includes(filter.id)}
+                    onChange={(e) => handleFilterToggle(filter.id, e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{filter.displayName}</div>
+                    <div className="text-sm text-gray-500">{filter.description || 'No description'}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {availableFilters.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <p>No filters available.</p>
+                <p className="text-sm mt-1">Create filters in the Filters tab first.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveCategoryFilters}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            >
+              <Save className="h-4 w-4" />
+              <span>Save Filters</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -286,6 +442,13 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ token }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
                       <button
+                        onClick={() => category.id && handleManageFilters(category.id)}
+                        className="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded"
+                        title="Manage filters"
+                      >
+                        <Settings className="h-4 w-4" />
+                      </button>
+                      <button
                         onClick={() => setEditingCategory(category)}
                         className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
                         title="Edit category"
@@ -324,6 +487,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ token }) => {
         )}
       </div>
 
+      {/* Category Form Modal */}
       {(editingCategory || isCreating) && (
         <CategoryForm
           category={editingCategory || emptyCategory}
@@ -331,6 +495,18 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ token }) => {
           onCancel={() => {
             setEditingCategory(null);
             setIsCreating(false);
+            setError('');
+          }}
+        />
+      )}
+
+      {/* Filter Management Modal */}
+      {managingFiltersFor && (
+        <FilterManagementModal
+          categoryId={managingFiltersFor}
+          onClose={() => {
+            setManagingFiltersFor(null);
+            setCategoryFilters([]);
             setError('');
           }}
         />

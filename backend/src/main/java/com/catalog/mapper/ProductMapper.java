@@ -2,6 +2,8 @@ package com.catalog.mapper;
 
 import com.catalog.dto.ProductDto;
 import com.catalog.entity.Product;
+import com.catalog.service.ProductFilterService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -10,12 +12,15 @@ import java.util.stream.Collectors;
 @Component
 public class ProductMapper {
     
+    @Autowired
+    private ProductFilterService productFilterService;
+    
     public ProductDto toDto(Product product) {
         if (product == null) {
             return null;
         }
         
-        return new ProductDto(
+        ProductDto dto = new ProductDto(
             product.getId(),
             product.getName(),
             product.getDescription(),
@@ -27,6 +32,13 @@ public class ProductMapper {
             product.getCreatedAt(),
             product.getUpdatedAt()
         );
+        
+        // Add filter values if product has an ID (i.e., it's persisted)
+        if (product.getId() != null) {
+            dto.setFilterValues(productFilterService.getProductFilterValues(product.getId()));
+        }
+        
+        return dto;
     }
     
     public Product toEntity(ProductDto productDto) {

@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class FilterService {
@@ -31,13 +32,17 @@ public class FilterService {
     public List<Filter> getActiveFiltersWithValues() {
         List<Filter> filters = filterRepository.findAllActiveFilters();
         
-        // Manually fetch and set active filter values for each filter
-        for (Filter filter : filters) {
-            List<FilterValue> activeValues = filterValueRepository.findByFilterIdAndActiveOrderByDisplayOrderAsc(filter.getId(), true);
-            filter.setFilterValues(activeValues);
-        }
-        
-        return filters;
+        // Filter out filters that don't have any active values
+        return filters.stream()
+                .filter(filter -> {
+                    List<FilterValue> activeValues = filterValueRepository.findByFilterIdAndActiveOrderByDisplayOrderAsc(filter.getId(), true);
+                    if (!activeValues.isEmpty()) {
+                        filter.setFilterValues(activeValues);
+                        return true;
+                    }
+                    return false;
+                })
+                .collect(Collectors.toList());
     }
     
     public Optional<Filter> getFilterById(Long id) {

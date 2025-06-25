@@ -11,9 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductFilterService {
@@ -56,23 +55,49 @@ public class ProductFilterService {
         }
     }
     
+    public Map<String, List<String>> getProductFilterValues(Long productId) {
+        List<ProductFilter> productFilters = productFilterRepository.findByProductId(productId);
+        
+        return productFilters.stream()
+                .collect(Collectors.groupingBy(
+                    pf -> pf.getFilter().getName(),
+                    Collectors.mapping(
+                        pf -> pf.getFilterValue().getValue(),
+                        Collectors.toList()
+                    )
+                ));
+    }
+    
     public List<Long> findProductIdsByFilters(Map<String, List<String>> filters) {
-        // This is a simplified implementation - in a real scenario, you'd want to implement
-        // proper intersection logic for multiple filters
         if (filters.isEmpty()) {
-            return List.of();
+            return Collections.emptyList();
         }
         
-        // For now, we'll just handle one filter at a time
-        Map.Entry<String, List<String>> firstFilter = filters.entrySet().iterator().next();
-        String filterName = firstFilter.getKey();
-        List<String> values = firstFilter.getValue();
+        // Get all product IDs that match each filter
+        List<Set<Long>> filterResults = new ArrayList<>();
         
-        Optional<Filter> filterOpt = filterRepository.findByName(filterName);
-        if (filterOpt.isPresent()) {
-            return productFilterRepository.findProductIdsByFilterAndValues(filterOpt.get().getId(), values);
+        for (Map.Entry<String, List<String>> entry : filters.entrySet()) {
+            String filterName = entry.getKey();
+            List<String> values = entry.getValue();
+            
+            Optional<Filter> filterOpt = filterRepository.findByName(filterName);
+            if (filterOpt.isPresent()) {
+                List<Long> productIds = productFilterRepository.findProductIdsByFilterAndValues(
+                    filterOpt.get().getId(), values);
+                filterResults.add(new HashSet<>(productIds));
+            }
         }
         
-        return List.of();
+        // Find intersection of all filter results (products that match ALL filters)
+        if (filterResults.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        Set<Long> result = new HashSet<>(filterResults.get(0));
+        for (int i = 1; i < filterResults.size(); i++) {
+            result.retainAll(filterResults.get(i));
+        }
+        
+        return new ArrayList<>(result);
     }
 }

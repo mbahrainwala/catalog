@@ -2,6 +2,8 @@ package com.catalog.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 public class ProductDto {
     
@@ -15,6 +17,7 @@ public class ProductDto {
     private Boolean inStock;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Map<String, List<String>> filterValues;
     
     public ProductDto() {}
     
@@ -112,5 +115,13 @@ public class ProductDto {
     
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    public Map<String, List<String>> getFilterValues() {
+        return filterValues;
+    }
+    
+    public void setFilterValues(Map<String, List<String>> filterValues) {
+        this.filterValues = filterValues;
     }
 }

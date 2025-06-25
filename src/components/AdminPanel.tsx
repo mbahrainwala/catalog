@@ -12,12 +12,31 @@ interface Product {
   imageUrl: string;
   rating: number;
   inStock: boolean;
+  filterValues?: Record<string, string[]>;
 }
 
 interface Category {
   id: number;
   name: string;
   description: string;
+  displayOrder: number;
+  active: boolean;
+}
+
+interface Filter {
+  id: number;
+  name: string;
+  displayName: string;
+  description: string;
+  displayOrder: number;
+  active: boolean;
+  filterValues: FilterValue[];
+}
+
+interface FilterValue {
+  id: number;
+  value: string;
+  displayValue: string;
   displayOrder: number;
   active: boolean;
 }
@@ -30,6 +49,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
   const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'filters'>('products');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [availableFilters, setAvailableFilters] = useState<Filter[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -42,12 +62,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
     category: '',
     imageUrl: '',
     rating: 0,
-    inStock: true
+    inStock: true,
+    filterValues: {}
   };
 
   useEffect(() => {
     fetchProducts();
     fetchCategories();
+    fetchFilters();
   }, []);
 
   const fetchProducts = async () => {
@@ -88,8 +110,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
     }
   };
 
+  const fetchFilters = async () => {
+    try {
+      const response = await fetch('/api/admin/filters', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableFilters(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch filters:', err);
+    }
+  };
+
+  const fetchCategoryFilters = async (categoryName: string): Promise<Filter[]> => {
+    try {
+      const response = await fetch(`/api/filters?category=${encodeURIComponent(categoryName)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+    } catch (err) {
+      console.error('Failed to fetch category filters:', err);
+    }
+    return [];
+  };
+
   const handleSave = async (product: Product) => {
     try {
+      console.log('Saving product with data:', product); // Debug log
+      
       const url = product.id ? `/api/admin/products/${product.id}` : '/api/admin/products';
       const method = product.id ? 'PUT' : 'POST';
 
@@ -108,10 +167,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
         setIsCreating(false);
         setError('');
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Failed to save product');
+        const errorData = await response.text();
+        console.error('Save error response:', errorData); // Debug log
+        setError('Failed to save product: ' + errorData);
       }
     } catch (err) {
+      console.error('Save error:', err); // Debug log
       setError('Network error');
     }
   };
@@ -144,10 +205,54 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
     onCancel
   }) => {
     const [formData, setFormData] = useState<Product>(product);
+    const [categoryFilters, setCategoryFilters] = useState<Filter[]>([]);
+    const [selectedFilterValues, setSelectedFilterValues] = useState<Record<string, string[]>>(
+      product.filterValues || {}
+    );
+
+    useEffect(() => {
+      if (formData.category) {
+        fetchCategoryFilters(formData.category).then(setCategoryFilters);
+      } else {
+        setCategoryFilters([]);
+      }
+    }, [formData.category]);
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      onSave(formData);
+      console.log('Form submission - filterValues:', selectedFilterValues); // Debug log
+      onSave({ ...formData, filterValues: selectedFilterValues });
+    };
+
+    const handleCategoryChange = (categoryName: string) => {
+      setFormData({ ...formData, category: categoryName });
+      setSelectedFilterValues({}); // Clear filter values when category changes
+    };
+
+    const handleFilterValueChange = (filterName: string, value: string, checked: boolean) => {
+      console.log('Filter value change:', filterName, value, checked); // Debug log
+      
+      setSelectedFilterValues(prev => {
+        const newValues = { ...prev };
+        
+        if (!newValues[filterName]) {
+          newValues[filterName] = [];
+        }
+        
+        if (checked) {
+          if (!newValues[filterName].includes(value)) {
+            newValues[filterName] = [...newValues[filterName], value];
+          }
+        } else {
+          newValues[filterName] = newValues[filterName].filter(v => v !== value);
+          if (newValues[filterName].length === 0) {
+            delete newValues[filterName];
+          }
+        }
+        
+        console.log('Updated filter values:', newValues); // Debug log
+        return newValues;
+      });
     };
 
     const activeCategoryNames = categories
@@ -157,7 +262,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h3 className="text-xl font-bold text-gray-900">
               {product.id ? 'Edit Product' : 'Add New Product'}
@@ -170,119 +275,164 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product Name
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Basic Product Information */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-medium text-gray-900">Basic Information</h4>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Product Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
-              <textarea
-                required
-                rows={3}
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price ($)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  required
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category
+                  </label>
+                  <select
+                    required
+                    value={formData.category}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select Category</option>
+                    {activeCategoryNames.map(categoryName => (
+                      <option key={categoryName} value={categoryName}>
+                        {categoryName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Price ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Rating (0-5)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="5"
+                      value={formData.rating}
+                      onChange={(e) => setFormData({ ...formData, rating: parseFloat(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.imageUrl}
+                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Stock Status
+                  </label>
+                  <select
+                    value={formData.inStock.toString()}
+                    onChange={(e) => setFormData({ ...formData, inStock: e.target.value === 'true' })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="true">In Stock</option>
+                    <option value="false">Out of Stock</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category
-                </label>
-                <select
-                  required
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select Category</option>
-                  {activeCategoryNames.map(categoryName => (
-                    <option key={categoryName} value={categoryName}>
-                      {categoryName}
-                    </option>
-                  ))}
-                </select>
-                {activeCategoryNames.length === 0 && (
-                  <p className="text-xs text-red-500 mt-1">
-                    No active categories available. Please create categories first.
-                  </p>
+              {/* Filter Values */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-medium text-gray-900">Filter Values</h4>
+                
+                {formData.category ? (
+                  categoryFilters.length > 0 ? (
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {categoryFilters.map(filter => (
+                        <div key={filter.id} className="border border-gray-200 rounded-lg p-4">
+                          <h5 className="font-medium text-gray-900 mb-3">{filter.displayName}</h5>
+                          <div className="space-y-2">
+                            {filter.filterValues
+                              .filter(fv => fv.active)
+                              .sort((a, b) => a.displayOrder - b.displayOrder)
+                              .map(filterValue => (
+                                <label
+                                  key={filterValue.id}
+                                  className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedFilterValues[filter.name]?.includes(filterValue.value) || false}
+                                    onChange={(e) => handleFilterValueChange(filter.name, filterValue.value, e.target.checked)}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <span className="text-sm text-gray-700">{filterValue.displayValue}</span>
+                                </label>
+                              ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No filters available for this category.</p>
+                      <p className="text-sm mt-1">You can add filters to this category in the Categories tab.</p>
+                    </div>
+                  )
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>Please select a category first to see available filters.</p>
+                  </div>
                 )}
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Image URL
-              </label>
-              <input
-                type="url"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Rating (0-5)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="5"
-                  value={formData.rating}
-                  onChange={(e) => setFormData({ ...formData, rating: parseFloat(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Stock Status
-                </label>
-                <select
-                  value={formData.inStock.toString()}
-                  onChange={(e) => setFormData({ ...formData, inStock: e.target.value === 'true' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="true">In Stock</option>
-                  <option value="false">Out of Stock</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
               <button
                 type="button"
                 onClick={onCancel}
@@ -395,6 +545,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                       Stock
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Filters
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -435,6 +588,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                         }`}>
                           {product.inStock ? 'In Stock' : 'Out of Stock'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-xs text-gray-500">
+                          {product.filterValues && Object.keys(product.filterValues).length > 0 ? (
+                            <div className="space-y-1">
+                              {Object.entries(product.filterValues).map(([filterName, values]) => (
+                                <div key={filterName}>
+                                  <span className="font-medium">{filterName}:</span> {values.join(', ')}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">No filters</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">

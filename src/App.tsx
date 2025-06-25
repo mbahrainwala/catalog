@@ -74,35 +74,17 @@ function App() {
     }
     fetchProducts();
     fetchCategories();
-    fetchAvailableFilters();
   }, []);
 
   useEffect(() => {
-    let filtered = products;
+    // Fetch filters when category changes
+    fetchAvailableFilters();
+  }, [selectedCategory]);
 
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Apply category filter
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(product => product.category === selectedCategory);
-    }
-
-    // Apply custom filters
-    if (Object.keys(selectedFilters).length > 0) {
-      // For now, we'll just show all products since we haven't implemented
-      // the product-filter relationship in the frontend yet
-      // In a real implementation, you'd call an API endpoint with the filters
-      console.log('Applying filters:', selectedFilters);
-    }
-
-    setFilteredProducts(filtered);
-  }, [products, searchTerm, selectedCategory, selectedFilters]);
+  useEffect(() => {
+    // Fetch products with current filters applied
+    fetchProducts();
+  }, [searchTerm, selectedCategory, selectedFilters]);
 
   const checkAuthStatus = async (authToken: string) => {
     try {
@@ -131,7 +113,30 @@ function App() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/products');
+      // Build query parameters
+      const params = new URLSearchParams();
+      
+      if (searchTerm) {
+        params.append('search', searchTerm);
+      }
+      
+      if (selectedCategory !== 'all') {
+        params.append('category', selectedCategory);
+      }
+      
+      // Add filter parameters
+      Object.entries(selectedFilters).forEach(([filterName, values]) => {
+        if (values.length > 0) {
+          params.append(filterName, values.join(','));
+        }
+      });
+      
+      const queryString = params.toString();
+      const url = `/api/products${queryString ? `?${queryString}` : ''}`;
+      
+      console.log('Fetching products with URL:', url); // Debug log
+      
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
@@ -158,7 +163,8 @@ function App() {
 
   const fetchAvailableFilters = async () => {
     try {
-      const response = await fetch('/api/filters');
+      const categoryParam = selectedCategory !== 'all' ? `?category=${encodeURIComponent(selectedCategory)}` : '';
+      const response = await fetch(`/api/filters${categoryParam}`);
       if (response.ok) {
         const data = await response.json();
         setAvailableFilters(data);
@@ -180,7 +186,14 @@ function App() {
     setShowAdminPanel(false);
   };
 
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setSelectedFilters({}); // Clear filters when category changes
+    setShowFilters(false); // Hide filters panel when category changes
+  };
+
   const handleFiltersChange = (filters: Record<string, string[]>) => {
+    console.log('Filters changed:', filters); // Debug log
     setSelectedFilters(filters);
   };
 
@@ -193,9 +206,14 @@ function App() {
     ));
   };
 
-  // Check if filters are available and have values
+  // Check if filters are available and have active values
   const hasAvailableFilters = availableFilters.length > 0 && 
-    availableFilters.some(filter => filter.filterValues && filter.filterValues.length > 0);
+    availableFilters.some(filter => 
+      filter.active && 
+      filter.filterValues && 
+      filter.filterValues.length > 0 && 
+      filter.filterValues.some(value => value.active)
+    );
 
   if (loading) {
     return (
@@ -287,7 +305,7 @@ function App() {
                   <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                   <select
                     value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
                     className="pl-10 pr-8 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-[150px] appearance-none transition-all"
                   >
                     <option value="all">All Categories</option>
@@ -314,12 +332,22 @@ function App() {
                   >
                     <Filter className="h-4 w-4 inline mr-2" />
                     Filters
+                    {Object.keys(selectedFilters).length > 0 && (
+                      <span className="ml-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                        {Object.values(selectedFilters).reduce((total, values) => total + values.length, 0)}
+                      </span>
+                    )}
                   </button>
                 )}
               </div>
               
               <div className="mt-4 text-sm text-gray-600">
                 {filteredProducts.length} products found
+                {Object.keys(selectedFilters).length > 0 && (
+                  <span className="ml-2 text-blue-600">
+                    (filtered by {Object.keys(selectedFilters).length} filter{Object.keys(selectedFilters).length > 1 ? 's' : ''})
+                  </span>
+                )}
               </div>
             </div>
 
@@ -327,7 +355,10 @@ function App() {
               {/* Filters Sidebar - Only show if filters are available and toggled on */}
               {hasAvailableFilters && showFilters && (
                 <div className="w-80 flex-shrink-0">
-                  <ProductFilters onFiltersChange={handleFiltersChange} />
+                  <ProductFilters 
+                    onFiltersChange={handleFiltersChange}
+                    selectedCategory={selectedCategory}
+                  />
                 </div>
               )}
 

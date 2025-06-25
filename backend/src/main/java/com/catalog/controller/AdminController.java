@@ -11,8 +11,10 @@ import com.catalog.entity.Product;
 import com.catalog.mapper.CategoryMapper;
 import com.catalog.mapper.FilterMapper;
 import com.catalog.mapper.ProductMapper;
+import com.catalog.service.CategoryFilterService;
 import com.catalog.service.CategoryService;
 import com.catalog.service.FilterService;
+import com.catalog.service.ProductFilterService;
 import com.catalog.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +44,12 @@ public class AdminController {
     private FilterService filterService;
     
     @Autowired
+    private CategoryFilterService categoryFilterService;
+    
+    @Autowired
+    private ProductFilterService productFilterService;
+    
+    @Autowired
     private ProductMapper productMapper;
     
     @Autowired
@@ -66,21 +74,80 @@ public class AdminController {
     }
     
     @PostMapping("/products")
-    public ResponseEntity<ProductDto> createProduct(@Valid @RequestBody Product product) {
-        Product savedProduct = productService.saveProduct(product);
-        ProductDto productDto = productMapper.toDto(savedProduct);
-        return ResponseEntity.status(HttpStatus.CREATED).body(productDto);
+    public ResponseEntity<ProductDto> createProduct(@Valid @RequestBody Map<String, Object> productData) {
+        try {
+            // Extract product data
+            Product product = new Product();
+            product.setName((String) productData.get("name"));
+            product.setDescription((String) productData.get("description"));
+            product.setPrice(new java.math.BigDecimal(productData.get("price").toString()));
+            product.setCategory((String) productData.get("category"));
+            product.setImageUrl((String) productData.get("imageUrl"));
+            
+            if (productData.get("rating") != null) {
+                product.setRating(new java.math.BigDecimal(productData.get("rating").toString()));
+            }
+            
+            product.setInStock((Boolean) productData.get("inStock"));
+            
+            // Save product first
+            Product savedProduct = productService.saveProduct(product);
+            
+            // Handle filter values if provided
+            @SuppressWarnings("unchecked")
+            Map<String, List<String>> filterData = (Map<String, List<String>>) productData.get("filterValues");
+            if (filterData != null && !filterData.isEmpty()) {
+                productFilterService.updateProductFilters(savedProduct, filterData);
+            }
+            
+            ProductDto productDto = productMapper.toDto(savedProduct);
+            return ResponseEntity.status(HttpStatus.CREATED).body(productDto);
+        } catch (Exception e) {
+            e.printStackTrace(); // Add logging to see the actual error
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Failed to create product: " + e.getMessage());
+            return ResponseEntity.badRequest().body(null);
+        }
     }
     
     @PutMapping("/products/{id}")
     public ResponseEntity<ProductDto> updateProduct(@PathVariable Long id, 
-                                                   @Valid @RequestBody Product productDetails) {
-        Product updatedProduct = productService.updateProduct(id, productDetails);
-        if (updatedProduct != null) {
+                                                   @Valid @RequestBody Map<String, Object> productData) {
+        try {
+            Optional<Product> existingProductOpt = productService.getProductById(id);
+            if (!existingProductOpt.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Product product = existingProductOpt.get();
+            product.setName((String) productData.get("name"));
+            product.setDescription((String) productData.get("description"));
+            product.setPrice(new java.math.BigDecimal(productData.get("price").toString()));
+            product.setCategory((String) productData.get("category"));
+            product.setImageUrl((String) productData.get("imageUrl"));
+            
+            if (productData.get("rating") != null) {
+                product.setRating(new java.math.BigDecimal(productData.get("rating").toString()));
+            }
+            
+            product.setInStock((Boolean) productData.get("inStock"));
+            
+            // Update product
+            Product updatedProduct = productService.updateProduct(id, product);
+            
+            // Handle filter values if provided
+            @SuppressWarnings("unchecked")
+            Map<String, List<String>> filterData = (Map<String, List<String>>) productData.get("filterValues");
+            if (filterData != null) {
+                productFilterService.updateProductFilters(updatedProduct, filterData);
+            }
+            
             ProductDto productDto = productMapper.toDto(updatedProduct);
             return ResponseEntity.ok(productDto);
+        } catch (Exception e) {
+            e.printStackTrace(); // Add logging to see the actual error
+            return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.notFound().build();
     }
     
     @DeleteMapping("/products/{id}")
@@ -159,6 +226,30 @@ public class AdminController {
         boolean deleted = categoryService.deleteCategory(id);
         return deleted ? ResponseEntity.noContent().build() 
                       : ResponseEntity.notFound().build();
+    }
+    
+    // Category-Filter Management
+    @GetMapping("/categories/{categoryId}/filters")
+    public ResponseEntity<List<FilterDto>> getCategoryFilters(@PathVariable Long categoryId) {
+        List<com.catalog.entity.CategoryFilter> categoryFilters = categoryFilterService.getCategoryFilters(categoryId);
+        List<Filter> filters = categoryFilters.stream()
+                .map(cf -> cf.getFilter())
+                .toList();
+        List<FilterDto> filterDtos = filterMapper.toDtoList(filters);
+        return ResponseEntity.ok(filterDtos);
+    }
+    
+    @PostMapping("/categories/{categoryId}/filters")
+    public ResponseEntity<?> updateCategoryFilters(@PathVariable Long categoryId, 
+                                                  @RequestBody List<Long> filterIds) {
+        try {
+            categoryFilterService.updateCategoryFilters(categoryId, filterIds);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Failed to update category filters");
+            return ResponseEntity.badRequest().body(response);
+        }
     }
     
     // Filter Management - Return DTOs instead of entities
