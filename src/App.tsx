@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, ShoppingBag, Eye, User, LogOut, Settings, Package } from 'lucide-react';
+import { Search, Filter, ShoppingBag, Eye, User, LogOut, Settings, Package, Key } from 'lucide-react';
 import LoginModal from './components/LoginModal';
 import AdminPanel from './components/AdminPanel';
 import ProductFilters from './components/ProductFilters';
 import ProductDetails from './components/ProductDetails';
+import ChangePasswordModal from './components/ChangePasswordModal';
 
 interface ProductImage {
   id: number;
@@ -72,10 +73,12 @@ function App() {
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
     // Check for existing token on app load
@@ -196,6 +199,7 @@ function App() {
     setToken(null);
     setUser(null);
     setShowAdminPanel(false);
+    setShowUserMenu(false);
   };
 
   const handleCategoryChange = (category: string) => {
@@ -224,16 +228,17 @@ function App() {
     return getPlaceholderImage(product.category);
   };
 
-  // Get placeholder image based on category
+  // Get placeholder image based on category - drilling and mining themed
   const getPlaceholderImage = (category: string) => {
     const placeholders = {
-      'electronics': 'https://images.pexels.com/photos/356056/pexels-photo-356056.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'clothing': 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'accessories': 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'home': 'https://images.pexels.com/photos/1000084/pexels-photo-1000084.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'sports': 'https://images.pexels.com/photos/3822864/pexels-photo-3822864.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'food': 'https://images.pexels.com/photos/918327/pexels-photo-918327.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'default': 'https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=500'
+      'drilling': 'https://images.pexels.com/photos/162568/oil-rig-sea-oil-drilling-162568.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'mining': 'https://images.pexels.com/photos/1108572/pexels-photo-1108572.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'equipment': 'https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'safety': 'https://images.pexels.com/photos/1108117/pexels-photo-1108117.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'tools': 'https://images.pexels.com/photos/162553/keys-workshop-mechanic-tools-162553.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'machinery': 'https://images.pexels.com/photos/1108572/pexels-photo-1108572.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'parts': 'https://images.pexels.com/photos/159298/gears-cogs-machine-machinery-159298.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'default': 'https://images.pexels.com/photos/162568/oil-rig-sea-oil-drilling-162568.jpeg?auto=compress&cs=tinysrgb&w=500'
     };
     
     return placeholders[category.toLowerCase()] || placeholders['default'];
@@ -267,37 +272,66 @@ function App() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-2">
               <ShoppingBag className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Catalog</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Industrial Catalog</h1>
             </div>
             
             <div className="flex items-center space-x-4">
               {user ? (
-                <div className="flex items-center space-x-4">
-                  <span className="text-sm text-gray-600">
-                    Welcome, {user.firstName}
-                  </span>
-                  
-                  {user.role === 'ROLE_ADMIN' && (
-                    <button
-                      onClick={() => setShowAdminPanel(!showAdminPanel)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        showAdminPanel
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <Settings className="h-4 w-4 inline mr-1" />
-                      Admin Panel
-                    </button>
-                  )}
-                  
+                <div className="relative">
                   <button
-                    onClick={handleLogout}
-                    className="flex items-center space-x-1 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center space-x-2 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                   >
-                    <LogOut className="h-4 w-4" />
-                    <span>Logout</span>
+                    <User className="h-4 w-4" />
+                    <span>Welcome, {user.firstName}</span>
                   </button>
+                  
+                  {showUserMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
+                      
+                      <button
+                        onClick={() => {
+                          setShowChangePasswordModal(true);
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                      >
+                        <Key className="h-4 w-4" />
+                        <span>Change Password</span>
+                      </button>
+                      
+                      {user.role === 'ROLE_ADMIN' && (
+                        <button
+                          onClick={() => {
+                            setShowAdminPanel(!showAdminPanel);
+                            setShowUserMenu(false);
+                          }}
+                          className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                            showAdminPanel
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <Settings className="h-4 w-4" />
+                          <span>Admin Panel</span>
+                        </button>
+                      )}
+                      
+                      <div className="border-t border-gray-100 mt-1 pt-1">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          <span>Logout</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button
@@ -312,6 +346,14 @@ function App() {
           </div>
         </div>
       </header>
+
+      {/* Click outside to close user menu */}
+      {showUserMenu && (
+        <div 
+          className="fixed inset-0 z-30" 
+          onClick={() => setShowUserMenu(false)}
+        />
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {showAdminPanel && user?.role === 'ROLE_ADMIN' && token ? (
@@ -503,9 +545,9 @@ function App() {
           <div className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">
               <ShoppingBag className="h-6 w-6 text-blue-600" />
-              <span className="text-lg font-semibold text-gray-900">Catalog</span>
+              <span className="text-lg font-semibold text-gray-900">Industrial Catalog</span>
             </div>
-            <p className="text-gray-600">Your premium product catalog experience</p>
+            <p className="text-gray-600">Your trusted partner for drilling and mining equipment</p>
           </div>
         </div>
       </footer>
@@ -516,6 +558,15 @@ function App() {
         onClose={() => setShowLoginModal(false)}
         onLogin={handleLogin}
       />
+
+      {/* Change Password Modal */}
+      {token && (
+        <ChangePasswordModal
+          isOpen={showChangePasswordModal}
+          onClose={() => setShowChangePasswordModal(false)}
+          token={token}
+        />
+      )}
 
       {/* Product Details Modal */}
       {selectedProductId && (

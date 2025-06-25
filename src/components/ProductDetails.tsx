@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShoppingBag, ChevronLeft, ChevronRight, Truck, Shield, RotateCcw, Package } from 'lucide-react';
+import { X, ShoppingBag, ChevronLeft, ChevronRight, Package } from 'lucide-react';
 
 interface ProductImage {
   id: number;
@@ -76,16 +76,17 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
     }
   };
 
-  // Get placeholder image based on category
+  // Get placeholder image based on category - drilling and mining themed
   const getPlaceholderImage = (category: string) => {
     const placeholders = {
-      'electronics': 'https://images.pexels.com/photos/356056/pexels-photo-356056.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'clothing': 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'accessories': 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'home': 'https://images.pexels.com/photos/1000084/pexels-photo-1000084.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'sports': 'https://images.pexels.com/photos/3822864/pexels-photo-3822864.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'food': 'https://images.pexels.com/photos/918327/pexels-photo-918327.jpeg?auto=compress&cs=tinysrgb&w=500',
-      'default': 'https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=500'
+      'drilling': 'https://images.pexels.com/photos/162568/oil-rig-sea-oil-drilling-162568.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'mining': 'https://images.pexels.com/photos/1108572/pexels-photo-1108572.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'equipment': 'https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'safety': 'https://images.pexels.com/photos/1108117/pexels-photo-1108117.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'tools': 'https://images.pexels.com/photos/162553/keys-workshop-mechanic-tools-162553.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'machinery': 'https://images.pexels.com/photos/1108572/pexels-photo-1108572.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'parts': 'https://images.pexels.com/photos/159298/gears-cogs-machine-machinery-159298.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'default': 'https://images.pexels.com/photos/162568/oil-rig-sea-oil-drilling-162568.jpeg?auto=compress&cs=tinysrgb&w=500'
     };
     
     return placeholders[category.toLowerCase()] || placeholders['default'];
@@ -331,41 +332,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
                     <ShoppingBag className="h-5 w-5" />
                     <span>{product.inStock ? 'Add to Cart' : 'Out of Stock'}</span>
                   </button>
-                </div>
-              </div>
-
-              {/* Features */}
-              <div className="border-t border-gray-200 pt-6">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Truck className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Free Shipping</div>
-                      <div className="text-xs text-gray-500">On orders over $50</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <Shield className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Warranty</div>
-                      <div className="text-xs text-gray-500">1 year coverage</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                      <RotateCcw className="h-5 w-5 text-orange-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Returns</div>
-                      <div className="text-xs text-gray-500">30 day policy</div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
