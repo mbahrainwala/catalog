@@ -1,8 +1,18 @@
 package com.catalog.controller;
 
+import com.catalog.dto.CategoryDto;
+import com.catalog.dto.FilterDto;
+import com.catalog.dto.FilterValueDto;
+import com.catalog.dto.ProductDto;
 import com.catalog.entity.Category;
+import com.catalog.entity.Filter;
+import com.catalog.entity.FilterValue;
 import com.catalog.entity.Product;
+import com.catalog.mapper.CategoryMapper;
+import com.catalog.mapper.FilterMapper;
+import com.catalog.mapper.ProductMapper;
 import com.catalog.service.CategoryService;
+import com.catalog.service.FilterService;
 import com.catalog.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,32 +38,49 @@ public class AdminController {
     @Autowired
     private CategoryService categoryService;
     
-    // Product Management
+    @Autowired
+    private FilterService filterService;
+    
+    @Autowired
+    private ProductMapper productMapper;
+    
+    @Autowired
+    private CategoryMapper categoryMapper;
+    
+    @Autowired
+    private FilterMapper filterMapper;
+    
+    // Product Management - Return DTOs
     @GetMapping("/products")
-    public ResponseEntity<List<Product>> getAllProducts() {
+    public ResponseEntity<List<ProductDto>> getAllProducts() {
         List<Product> products = productService.getAllProducts();
-        return ResponseEntity.ok(products);
+        List<ProductDto> productDtos = productMapper.toDtoList(products);
+        return ResponseEntity.ok(productDtos);
     }
     
     @GetMapping("/products/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
+    public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
         Optional<Product> product = productService.getProductById(id);
-        return product.map(ResponseEntity::ok)
+        return product.map(p -> ResponseEntity.ok(productMapper.toDto(p)))
                      .orElse(ResponseEntity.notFound().build());
     }
     
     @PostMapping("/products")
-    public ResponseEntity<Product> createProduct(@Valid @RequestBody Product product) {
+    public ResponseEntity<ProductDto> createProduct(@Valid @RequestBody Product product) {
         Product savedProduct = productService.saveProduct(product);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
+        ProductDto productDto = productMapper.toDto(savedProduct);
+        return ResponseEntity.status(HttpStatus.CREATED).body(productDto);
     }
     
     @PutMapping("/products/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, 
-                                               @Valid @RequestBody Product productDetails) {
+    public ResponseEntity<ProductDto> updateProduct(@PathVariable Long id, 
+                                                   @Valid @RequestBody Product productDetails) {
         Product updatedProduct = productService.updateProduct(id, productDetails);
-        return updatedProduct != null ? ResponseEntity.ok(updatedProduct) 
-                                     : ResponseEntity.notFound().build();
+        if (updatedProduct != null) {
+            ProductDto productDto = productMapper.toDto(updatedProduct);
+            return ResponseEntity.ok(productDto);
+        }
+        return ResponseEntity.notFound().build();
     }
     
     @DeleteMapping("/products/{id}")
@@ -63,17 +90,18 @@ public class AdminController {
                       : ResponseEntity.notFound().build();
     }
     
-    // Category Management
+    // Category Management - Return DTOs
     @GetMapping("/categories")
-    public ResponseEntity<List<Category>> getAllCategories() {
+    public ResponseEntity<List<CategoryDto>> getAllCategories() {
         List<Category> categories = categoryService.getAllCategories();
-        return ResponseEntity.ok(categories);
+        List<CategoryDto> categoryDtos = categoryMapper.toDtoList(categories);
+        return ResponseEntity.ok(categoryDtos);
     }
     
     @GetMapping("/categories/{id}")
-    public ResponseEntity<Category> getCategoryById(@PathVariable Long id) {
+    public ResponseEntity<CategoryDto> getCategoryById(@PathVariable Long id) {
         Optional<Category> category = categoryService.getCategoryById(id);
-        return category.map(ResponseEntity::ok)
+        return category.map(c -> ResponseEntity.ok(categoryMapper.toDto(c)))
                       .orElse(ResponseEntity.notFound().build());
     }
     
@@ -87,7 +115,8 @@ public class AdminController {
         }
         
         Category savedCategory = categoryService.saveCategory(category);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedCategory);
+        CategoryDto categoryDto = categoryMapper.toDto(savedCategory);
+        return ResponseEntity.status(HttpStatus.CREATED).body(categoryDto);
     }
     
     @PutMapping("/categories/{id}")
@@ -103,8 +132,11 @@ public class AdminController {
         }
         
         Category updatedCategory = categoryService.updateCategory(id, categoryDetails);
-        return updatedCategory != null ? ResponseEntity.ok(updatedCategory) 
-                                      : ResponseEntity.notFound().build();
+        if (updatedCategory != null) {
+            CategoryDto categoryDto = categoryMapper.toDto(updatedCategory);
+            return ResponseEntity.ok(categoryDto);
+        }
+        return ResponseEntity.notFound().build();
     }
     
     @DeleteMapping("/categories/{id}")
@@ -125,6 +157,133 @@ public class AdminController {
         }
         
         boolean deleted = categoryService.deleteCategory(id);
+        return deleted ? ResponseEntity.noContent().build() 
+                      : ResponseEntity.notFound().build();
+    }
+    
+    // Filter Management - Return DTOs instead of entities
+    @GetMapping("/filters")
+    public ResponseEntity<List<FilterDto>> getAllFilters() {
+        List<Filter> filters = filterService.getAllFilters();
+        List<FilterDto> filterDtos = filterMapper.toDtoList(filters);
+        return ResponseEntity.ok(filterDtos);
+    }
+    
+    @GetMapping("/filters/{id}")
+    public ResponseEntity<FilterDto> getFilterById(@PathVariable Long id) {
+        Optional<Filter> filter = filterService.getFilterById(id);
+        return filter.map(f -> ResponseEntity.ok(filterMapper.toDto(f)))
+                    .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @PostMapping("/filters")
+    public ResponseEntity<?> createFilter(@Valid @RequestBody Filter filter) {
+        Map<String, String> response = new HashMap<>();
+        
+        if (filterService.filterExists(filter.getName())) {
+            response.put("message", "Filter with this name already exists");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        Filter savedFilter = filterService.saveFilter(filter);
+        FilterDto filterDto = filterMapper.toDto(savedFilter);
+        return ResponseEntity.status(HttpStatus.CREATED).body(filterDto);
+    }
+    
+    @PutMapping("/filters/{id}")
+    public ResponseEntity<?> updateFilter(@PathVariable Long id, 
+                                        @Valid @RequestBody Filter filterDetails) {
+        Map<String, String> response = new HashMap<>();
+        
+        // Check if another filter with the same name exists (excluding current one)
+        Optional<Filter> existingFilter = filterService.getFilterByName(filterDetails.getName());
+        if (existingFilter.isPresent() && !existingFilter.get().getId().equals(id)) {
+            response.put("message", "Filter with this name already exists");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        Filter updatedFilter = filterService.updateFilter(id, filterDetails);
+        if (updatedFilter != null) {
+            FilterDto filterDto = filterMapper.toDto(updatedFilter);
+            return ResponseEntity.ok(filterDto);
+        }
+        return ResponseEntity.notFound().build();
+    }
+    
+    @DeleteMapping("/filters/{id}")
+    public ResponseEntity<?> deleteFilter(@PathVariable Long id) {
+        Map<String, String> response = new HashMap<>();
+        
+        boolean deleted = filterService.deleteFilter(id);
+        return deleted ? ResponseEntity.noContent().build() 
+                      : ResponseEntity.notFound().build();
+    }
+    
+    // Filter Value Management - Return DTOs instead of entities
+    @GetMapping("/filters/{filterId}/values")
+    public ResponseEntity<List<FilterValueDto>> getFilterValues(@PathVariable Long filterId) {
+        List<FilterValue> filterValues = filterService.getFilterValues(filterId);
+        List<FilterValueDto> filterValueDtos = filterMapper.toValueDtoList(filterValues);
+        return ResponseEntity.ok(filterValueDtos);
+    }
+    
+    @PostMapping("/filters/{filterId}/values")
+    public ResponseEntity<?> createFilterValue(@PathVariable Long filterId, 
+                                             @Valid @RequestBody FilterValue filterValue) {
+        Map<String, String> response = new HashMap<>();
+        
+        Optional<Filter> filterOpt = filterService.getFilterById(filterId);
+        if (!filterOpt.isPresent()) {
+            response.put("message", "Filter not found");
+            return ResponseEntity.notFound().build();
+        }
+        
+        if (filterService.filterValueExists(filterId, filterValue.getValue())) {
+            response.put("message", "Filter value already exists");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        filterValue.setFilter(filterOpt.get());
+        FilterValue savedFilterValue = filterService.saveFilterValue(filterValue);
+        FilterValueDto filterValueDto = filterMapper.toDto(savedFilterValue);
+        return ResponseEntity.status(HttpStatus.CREATED).body(filterValueDto);
+    }
+    
+    @PutMapping("/filter-values/{id}")
+    public ResponseEntity<?> updateFilterValue(@PathVariable Long id, 
+                                             @Valid @RequestBody FilterValue filterValueDetails) {
+        Map<String, String> response = new HashMap<>();
+        
+        Optional<FilterValue> existingFilterValue = filterService.getFilterValueById(id);
+        if (!existingFilterValue.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        Long filterId = existingFilterValue.get().getFilter().getId();
+        
+        // Check if another filter value with the same value exists (excluding current one)
+        if (filterService.filterValueExists(filterId, filterValueDetails.getValue())) {
+            Optional<FilterValue> duplicateValue = filterService.getFilterValues(filterId).stream()
+                    .filter(fv -> fv.getValue().equals(filterValueDetails.getValue()) && !fv.getId().equals(id))
+                    .findFirst();
+            
+            if (duplicateValue.isPresent()) {
+                response.put("message", "Filter value already exists");
+                return ResponseEntity.badRequest().body(response);
+            }
+        }
+        
+        FilterValue updatedFilterValue = filterService.updateFilterValue(id, filterValueDetails);
+        if (updatedFilterValue != null) {
+            FilterValueDto filterValueDto = filterMapper.toDto(updatedFilterValue);
+            return ResponseEntity.ok(filterValueDto);
+        }
+        return ResponseEntity.notFound().build();
+    }
+    
+    @DeleteMapping("/filter-values/{id}")
+    public ResponseEntity<?> deleteFilterValue(@PathVariable Long id) {
+        boolean deleted = filterService.deleteFilterValue(id);
         return deleted ? ResponseEntity.noContent().build() 
                       : ResponseEntity.notFound().build();
     }

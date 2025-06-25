@@ -1,6 +1,8 @@
 package com.catalog.controller;
 
+import com.catalog.dto.ProductDto;
 import com.catalog.entity.Product;
+import com.catalog.mapper.ProductMapper;
 import com.catalog.service.CategoryService;
 import com.catalog.service.ProductService;
 import jakarta.validation.Valid;
@@ -23,8 +25,11 @@ public class ProductController {
     @Autowired
     private CategoryService categoryService;
     
+    @Autowired
+    private ProductMapper productMapper;
+    
     @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts(
+    public ResponseEntity<List<ProductDto>> getAllProducts(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String sort) {
@@ -57,28 +62,33 @@ public class ProductController {
             }
         }
         
-        return ResponseEntity.ok(products);
+        List<ProductDto> productDtos = productMapper.toDtoList(products);
+        return ResponseEntity.ok(productDtos);
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
+    public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
         Optional<Product> product = productService.getProductById(id);
-        return product.map(ResponseEntity::ok)
+        return product.map(p -> ResponseEntity.ok(productMapper.toDto(p)))
                      .orElse(ResponseEntity.notFound().build());
     }
     
     @PostMapping
-    public ResponseEntity<Product> createProduct(@Valid @RequestBody Product product) {
+    public ResponseEntity<ProductDto> createProduct(@Valid @RequestBody Product product) {
         Product savedProduct = productService.saveProduct(product);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
+        ProductDto productDto = productMapper.toDto(savedProduct);
+        return ResponseEntity.status(HttpStatus.CREATED).body(productDto);
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, 
-                                               @Valid @RequestBody Product productDetails) {
+    public ResponseEntity<ProductDto> updateProduct(@PathVariable Long id, 
+                                                   @Valid @RequestBody Product productDetails) {
         Product updatedProduct = productService.updateProduct(id, productDetails);
-        return updatedProduct != null ? ResponseEntity.ok(updatedProduct) 
-                                     : ResponseEntity.notFound().build();
+        if (updatedProduct != null) {
+            ProductDto productDto = productMapper.toDto(updatedProduct);
+            return ResponseEntity.ok(productDto);
+        }
+        return ResponseEntity.notFound().build();
     }
     
     @DeleteMapping("/{id}")
@@ -95,8 +105,9 @@ public class ProductController {
     }
     
     @GetMapping("/in-stock")
-    public ResponseEntity<List<Product>> getInStockProducts() {
+    public ResponseEntity<List<ProductDto>> getInStockProducts() {
         List<Product> products = productService.getInStockProducts();
-        return ResponseEntity.ok(products);
+        List<ProductDto> productDtos = productMapper.toDtoList(products);
+        return ResponseEntity.ok(productDtos);
     }
 }

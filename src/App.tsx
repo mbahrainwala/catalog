@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, ShoppingBag, Star, Heart, Eye, User, LogOut, Settings } from 'lucide-react';
 import LoginModal from './components/LoginModal';
 import AdminPanel from './components/AdminPanel';
+import ProductFilters from './components/ProductFilters';
 
 interface Product {
   id: number;
@@ -31,12 +32,33 @@ interface Category {
   active: boolean;
 }
 
+interface FilterType {
+  id: number;
+  name: string;
+  displayName: string;
+  description: string;
+  displayOrder: number;
+  active: boolean;
+  filterValues: FilterValue[];
+}
+
+interface FilterValue {
+  id: number;
+  value: string;
+  displayValue: string;
+  displayOrder: number;
+  active: boolean;
+}
+
 function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [availableFilters, setAvailableFilters] = useState<FilterType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
+  const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -52,11 +74,13 @@ function App() {
     }
     fetchProducts();
     fetchCategories();
+    fetchAvailableFilters();
   }, []);
 
   useEffect(() => {
     let filtered = products;
 
+    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(product =>
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -64,12 +88,21 @@ function App() {
       );
     }
 
+    // Apply category filter
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(product => product.category === selectedCategory);
     }
 
+    // Apply custom filters
+    if (Object.keys(selectedFilters).length > 0) {
+      // For now, we'll just show all products since we haven't implemented
+      // the product-filter relationship in the frontend yet
+      // In a real implementation, you'd call an API endpoint with the filters
+      console.log('Applying filters:', selectedFilters);
+    }
+
     setFilteredProducts(filtered);
-  }, [products, searchTerm, selectedCategory]);
+  }, [products, searchTerm, selectedCategory, selectedFilters]);
 
   const checkAuthStatus = async (authToken: string) => {
     try {
@@ -123,6 +156,18 @@ function App() {
     }
   };
 
+  const fetchAvailableFilters = async () => {
+    try {
+      const response = await fetch('/api/filters');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableFilters(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch filters:', err);
+    }
+  };
+
   const handleLogin = (authToken: string, userData: any) => {
     setToken(authToken);
     setUser(userData);
@@ -135,6 +180,10 @@ function App() {
     setShowAdminPanel(false);
   };
 
+  const handleFiltersChange = (filters: Record<string, string[]>) => {
+    setSelectedFilters(filters);
+  };
+
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -143,6 +192,10 @@ function App() {
       />
     ));
   };
+
+  // Check if filters are available and have values
+  const hasAvailableFilters = availableFilters.length > 0 && 
+    availableFilters.some(filter => filter.filterValues && filter.filterValues.length > 0);
 
   if (loading) {
     return (
@@ -248,6 +301,21 @@ function App() {
                       ))}
                   </select>
                 </div>
+
+                {/* Toggle Filters Button - Only show if filters are available */}
+                {hasAvailableFilters && (
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`px-4 py-3 rounded-lg font-medium transition-colors ${
+                      showFilters
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Filter className="h-4 w-4 inline mr-2" />
+                    Filters
+                  </button>
+                )}
               </div>
               
               <div className="mt-4 text-sm text-gray-600">
@@ -255,88 +323,99 @@ function App() {
               </div>
             </div>
 
-            {/* Product Grid */}
-            {filteredProducts.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Search className="h-12 w-12 text-gray-400" />
+            <div className="flex gap-8">
+              {/* Filters Sidebar - Only show if filters are available and toggled on */}
+              {hasAvailableFilters && showFilters && (
+                <div className="w-80 flex-shrink-0">
+                  <ProductFilters onFiltersChange={handleFiltersChange} />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
-                <p className="text-gray-600">Try adjusting your search or filter criteria</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer"
-                  >
-                    {/* Product Image */}
-                    <div className="relative overflow-hidden">
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
-                        <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <button className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors">
-                            <Eye className="h-5 w-5 text-gray-700" />
-                          </button>
-                          <button className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors">
-                            <Heart className="h-5 w-5 text-gray-700" />
-                          </button>
-                        </div>
-                      </div>
-                      {!product.inStock && (
-                        <span className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-medium rounded-full">
-                          Out of Stock
-                        </span>
-                      )}
-                    </div>
+              )}
 
-                    {/* Product Info */}
-                    <div className="p-5">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
-                          {product.name}
-                        </h3>
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full ml-2 flex-shrink-0">
-                          {product.category}
-                        </span>
-                      </div>
-                      
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                        {product.description}
-                      </p>
-                      
-                      <div className="flex items-center mb-3">
-                        <div className="flex items-center space-x-1">
-                          {renderStars(product.rating)}
-                        </div>
-                        <span className="text-sm text-gray-500 ml-2">({product.rating})</span>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <span className="text-2xl font-bold text-gray-900">
-                          ${product.price}
-                        </span>
-                        <button 
-                          disabled={!product.inStock}
-                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                            product.inStock
-                              ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
-                              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                          }`}
-                        >
-                          {product.inStock ? 'Add to Cart' : 'Unavailable'}
-                        </button>
-                      </div>
+              {/* Product Grid */}
+              <div className="flex-1">
+                {filteredProducts.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <Search className="h-12 w-12 text-gray-400" />
                     </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
+                    <p className="text-gray-600">Try adjusting your search or filter criteria</p>
                   </div>
-                ))}
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {filteredProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer"
+                      >
+                        {/* Product Image */}
+                        <div className="relative overflow-hidden">
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+                            <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <button className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors">
+                                <Eye className="h-5 w-5 text-gray-700" />
+                              </button>
+                              <button className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors">
+                                <Heart className="h-5 w-5 text-gray-700" />
+                              </button>
+                            </div>
+                          </div>
+                          {!product.inStock && (
+                            <span className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-medium rounded-full">
+                              Out of Stock
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="p-5">
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                              {product.name}
+                            </h3>
+                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full ml-2 flex-shrink-0">
+                              {product.category}
+                            </span>
+                          </div>
+                          
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                            {product.description}
+                          </p>
+                          
+                          <div className="flex items-center mb-3">
+                            <div className="flex items-center space-x-1">
+                              {renderStars(product.rating)}
+                            </div>
+                            <span className="text-sm text-gray-500 ml-2">({product.rating})</span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-2xl font-bold text-gray-900">
+                              ${product.price}
+                            </span>
+                            <button 
+                              disabled={!product.inStock}
+                              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                                product.inStock
+                                  ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
+                                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                              }`}
+                            >
+                              {product.inStock ? 'Add to Cart' : 'Unavailable'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </>
         )}
       </div>

@@ -1,6 +1,8 @@
 package com.catalog.controller;
 
+import com.catalog.dto.CategoryDto;
 import com.catalog.entity.Category;
+import com.catalog.mapper.CategoryMapper;
 import com.catalog.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -16,10 +18,14 @@ public class CategoryController {
     @Autowired
     private CategoryService categoryService;
     
+    @Autowired
+    private CategoryMapper categoryMapper;
+    
     @GetMapping
-    public ResponseEntity<List<Category>> getActiveCategories() {
+    public ResponseEntity<List<CategoryDto>> getActiveCategories() {
         List<Category> categories = categoryService.getActiveCategories();
-        return ResponseEntity.ok(categories);
+        List<CategoryDto> categoryDtos = categoryMapper.toDtoList(categories);
+        return ResponseEntity.ok(categoryDtos);
     }
     
     @GetMapping("/names")

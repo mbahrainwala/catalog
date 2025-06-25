@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, Package, Tags } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Package, Tags, Filter as FilterIcon } from 'lucide-react';
 import CategoryManager from './CategoryManager';
+import FilterManager from './FilterManager';
 
 interface Product {
   id?: number;
@@ -26,7 +27,7 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
-  const [activeTab, setActiveTab] = useState<'products' | 'categories'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'filters'>('products');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -338,12 +339,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
             <Tags className="h-4 w-4 inline mr-2" />
             Categories
           </button>
+          <button
+            onClick={() => setActiveTab('filters')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'filters'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <FilterIcon className="h-4 w-4 inline mr-2" />
+            Filters
+          </button>
         </nav>
       </div>
 
       {/* Tab Content */}
       {activeTab === 'categories' ? (
         <CategoryManager token={token} />
+      ) : activeTab === 'filters' ? (
+        <FilterManager token={token} />
       ) : (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
