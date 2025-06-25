@@ -249,7 +249,7 @@ const ContactUs: React.FC = () => {
                 rows={6}
                 value={formData.message}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 placeholder="Please provide details about your inquiry, including specific products you're interested in, quantities needed, or any technical requirements..."
               />
             </div>

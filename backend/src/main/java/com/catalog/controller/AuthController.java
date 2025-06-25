@@ -59,6 +59,8 @@ public class AuthController {
         Map<String, Object> response = new HashMap<>();
         
         try {
+            logger.info("Authentication attempt for user: {}", loginRequest.getEmail());
+            
             // Check if user exists and needs activation
             Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
             if (userOpt.isPresent()) {
@@ -81,6 +83,7 @@ public class AuthController {
                 }
             }
             
+            // Authenticate with Spring Security - it will handle password hashing internally
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
             
@@ -88,6 +91,8 @@ public class AuthController {
             String jwt = jwtUtils.generateJwtToken(authentication);
             
             UserPrincipal userDetails = (UserPrincipal) authentication.getPrincipal();
+            
+            logger.info("Authentication successful for user: {}", loginRequest.getEmail());
             
             return ResponseEntity.ok(new JwtResponse(jwt,
                     userDetails.getId(),

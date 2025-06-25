@@ -11,7 +11,7 @@ public class HomeController {
         return "forward:/index.html";
     }
     
-    @RequestMapping(value = {"/admin", "/login"})
+    @RequestMapping(value = {"/admin", "/login", "/reset-password", "/contact", "/about"})
     public String spa() {
         return "forward:/index.html";
     }

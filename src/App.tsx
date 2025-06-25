@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, ShoppingBag, Eye, User, LogOut, Settings, Package, Key, Phone, Info } from 'lucide-react';
+import { Search, Filter, ShoppingBag, Eye, User, LogOut, Settings, Package, Key, Phone, Info, Users } from 'lucide-react';
 import LoginModal from './components/LoginModal';
 import AdminPanel from './components/AdminPanel';
+import OwnerPanel from './components/OwnerPanel';
 import ProductFilters from './components/ProductFilters';
 import ProductDetails from './components/ProductDetails';
 import ChangePasswordModal from './components/ChangePasswordModal';
@@ -82,6 +83,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showOwnerPanel, setShowOwnerPanel] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -226,6 +228,7 @@ function App() {
     setToken(null);
     setUser(null);
     setShowAdminPanel(false);
+    setShowOwnerPanel(false);
     setShowUserMenu(false);
   };
 
@@ -363,6 +366,7 @@ function App() {
                       <div className="px-4 py-2 border-b border-gray-100">
                         <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
                         <p className="text-xs text-gray-500">{user.email}</p>
+                        <p className="text-xs text-blue-600 font-medium">{user.role.replace('ROLE_', '')}</p>
                       </div>
                       
                       <button
@@ -376,11 +380,31 @@ function App() {
                         <span>Change Password</span>
                       </button>
                       
-                      {user.role === 'ROLE_ADMIN' && (
+                      {user.role === 'ROLE_OWNER' && (
+                        <button
+                          onClick={() => {
+                            setCurrentPage('catalog');
+                            setShowOwnerPanel(!showOwnerPanel);
+                            setShowAdminPanel(false);
+                            setShowUserMenu(false);
+                          }}
+                          className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                            showOwnerPanel
+                              ? 'bg-purple-50 text-purple-700'
+                              : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <Users className="h-4 w-4" />
+                          <span>Owner Panel</span>
+                        </button>
+                      )}
+                      
+                      {(user.role === 'ROLE_ADMIN' || user.role === 'ROLE_OWNER') && (
                         <button
                           onClick={() => {
                             setCurrentPage('catalog');
                             setShowAdminPanel(!showAdminPanel);
+                            setShowOwnerPanel(false);
                             setShowUserMenu(false);
                           }}
                           className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
@@ -472,7 +496,9 @@ function App() {
           <ContactUs />
         ) : currentPage === 'about' ? (
           <AboutUs />
-        ) : showAdminPanel && user?.role === 'ROLE_ADMIN' && token ? (
+        ) : showOwnerPanel && user?.role === 'ROLE_OWNER' && token ? (
+          <OwnerPanel token={token} />
+        ) : showAdminPanel && (user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_OWNER') && token ? (
           <AdminPanel token={token} />
         ) : (
           <>
