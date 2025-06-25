@@ -48,9 +48,9 @@ public class PasswordResetService {
     private final SecureRandom secureRandom = new SecureRandom();
     
     @Transactional
-    public boolean initiatePasswordReset(String email) {
+    public boolean initiatePasswordReset(String email, String firstName, String lastName) {
         try {
-            logger.info("Initiating password reset for email: {}", email);
+            logger.info("Initiating password reset for email: {} with identity verification", email);
             
             Optional<User> userOpt = userRepository.findByEmail(email);
             if (!userOpt.isPresent()) {
@@ -60,6 +60,14 @@ public class PasswordResetService {
             }
             
             User user = userOpt.get();
+            
+            // Verify the user's identity by checking first name and last name
+            if (!user.getFirstName().trim().equalsIgnoreCase(firstName.trim()) || 
+                !user.getLastName().trim().equalsIgnoreCase(lastName.trim())) {
+                logger.warn("Password reset requested with incorrect personal information for email: {}", email);
+                // Return true to prevent information disclosure attacks
+                return true;
+            }
             
             // Check rate limiting
             LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);

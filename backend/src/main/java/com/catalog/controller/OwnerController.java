@@ -4,6 +4,7 @@ import com.catalog.dto.UserDto;
 import com.catalog.entity.User;
 import com.catalog.mapper.UserMapper;
 import com.catalog.service.UserService;
+import com.catalog.service.UserFileService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +30,9 @@ public class OwnerController {
     
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private UserFileService userFileService;
     
     @Autowired
     private UserMapper userMapper;
@@ -93,6 +98,29 @@ public class OwnerController {
             
             Map<String, String> response = new HashMap<>();
             response.put("message", "Failed to create user: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    @PutMapping("/users/{id}")
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @Valid @RequestBody UserDto userDto) {
+        try {
+            logger.info("Updating user {}: {}", id, userDto);
+            
+            User updatedUser = userService.updateUserProfile(id, userDto);
+            if (updatedUser != null) {
+                UserDto responseDto = userMapper.toDto(updatedUser);
+                logger.info("User updated successfully");
+                return ResponseEntity.ok(responseDto);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error updating user {}", id, e);
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Failed to update user: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
@@ -210,6 +238,85 @@ public class OwnerController {
             
             Map<String, String> response = new HashMap<>();
             response.put("message", "Failed to reset password: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    // File upload endpoints
+    @PostMapping("/users/{id}/profile-picture")
+    public ResponseEntity<?> uploadProfilePicture(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        try {
+            logger.info("Uploading profile picture for user: {}", id);
+            
+            String imageUrl = userFileService.uploadProfilePicture(id, file);
+            if (imageUrl != null) {
+                Map<String, String> response = new HashMap<>();
+                response.put("message", "Profile picture uploaded successfully");
+                response.put("imageUrl", imageUrl);
+                
+                logger.info("Profile picture uploaded successfully for user: {}", id);
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error uploading profile picture for user {}", id, e);
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Failed to upload profile picture: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    @PostMapping("/users/{id}/id-document1")
+    public ResponseEntity<?> uploadIdDocument1(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        try {
+            logger.info("Uploading ID document 1 for user: {}", id);
+            
+            Map<String, String> result = userFileService.uploadIdDocument1(id, file);
+            if (result != null) {
+                Map<String, String> response = new HashMap<>();
+                response.put("message", "ID document 1 uploaded successfully");
+                response.putAll(result);
+                
+                logger.info("ID document 1 uploaded successfully for user: {}", id);
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error uploading ID document 1 for user {}", id, e);
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Failed to upload ID document 1: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    @PostMapping("/users/{id}/id-document2")
+    public ResponseEntity<?> uploadIdDocument2(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        try {
+            logger.info("Uploading ID document 2 for user: {}", id);
+            
+            Map<String, String> result = userFileService.uploadIdDocument2(id, file);
+            if (result != null) {
+                Map<String, String> response = new HashMap<>();
+                response.put("message", "ID document 2 uploaded successfully");
+                response.putAll(result);
+                
+                logger.info("ID document 2 uploaded successfully for user: {}", id);
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error uploading ID document 2 for user {}", id, e);
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Failed to upload ID document 2: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }

@@ -1,5 +1,6 @@
 package com.catalog.service;
 
+import com.catalog.dto.UserDto;
 import com.catalog.entity.User;
 import com.catalog.repository.UserRepository;
 import org.slf4j.Logger;
@@ -78,6 +79,51 @@ public class UserService {
         } catch (Exception e) {
             logger.error("Error creating user: {}", email, e);
             throw new RuntimeException("Failed to create user: " + e.getMessage());
+        }
+    }
+    
+    @Transactional
+    public User updateUserProfile(Long id, UserDto userDto) {
+        try {
+            Optional<User> userOpt = userRepository.findById(id);
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+                
+                // Update basic information
+                user.setFirstName(userDto.getFirstName());
+                user.setLastName(userDto.getLastName());
+                user.setRole(User.Role.valueOf(userDto.getRole()));
+                user.setEnabled(userDto.getEnabled());
+                
+                // Update profile fields
+                user.setAlternateEmail(userDto.getAlternateEmail());
+                user.setPhoneNumber(userDto.getPhoneNumber());
+                user.setAlternatePhoneNumber(userDto.getAlternatePhoneNumber());
+                
+                // Update address 1
+                user.setAddress1Line1(userDto.getAddress1Line1());
+                user.setAddress1Line2(userDto.getAddress1Line2());
+                user.setAddress1City(userDto.getAddress1City());
+                user.setAddress1State(userDto.getAddress1State());
+                user.setAddress1PostalCode(userDto.getAddress1PostalCode());
+                user.setAddress1Country(userDto.getAddress1Country());
+                
+                // Update address 2
+                user.setAddress2Line1(userDto.getAddress2Line1());
+                user.setAddress2Line2(userDto.getAddress2Line2());
+                user.setAddress2City(userDto.getAddress2City());
+                user.setAddress2State(userDto.getAddress2State());
+                user.setAddress2PostalCode(userDto.getAddress2PostalCode());
+                user.setAddress2Country(userDto.getAddress2Country());
+                
+                // Note: File uploads (profile picture, documents) are handled separately
+                
+                return userRepository.save(user);
+            }
+            return null;
+        } catch (Exception e) {
+            logger.error("Error updating user profile for user {}", id, e);
+            throw new RuntimeException("Failed to update user profile: " + e.getMessage());
         }
     }
     

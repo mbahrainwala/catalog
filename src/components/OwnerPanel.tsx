@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit, Trash2, Save, X, Shield, UserCheck, UserX, Key, Mail } from 'lucide-react';
+import { Users, Plus, Trash2, UserCheck, UserX, Key, Mail, Eye } from 'lucide-react';
+import UserProfileModal from './UserProfileModal';
 
 interface User {
   id: number;
@@ -19,8 +20,8 @@ interface OwnerPanelProps {
 const OwnerPanel: React.FC<OwnerPanelProps> = ({ token }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [viewingProfileId, setViewingProfileId] = useState<number | null>(null);
   const [error, setError] = useState('');
 
   const emptyUser = {
@@ -214,7 +215,7 @@ const OwnerPanel: React.FC<OwnerPanelProps> = ({ token }) => {
         <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h3 className="text-xl font-bold text-gray-900">
-              {isCreating ? 'Create New User' : 'Edit User'}
+              Create New User
             </h3>
             <button
               onClick={onCancel}
@@ -236,11 +237,7 @@ const OwnerPanel: React.FC<OwnerPanelProps> = ({ token }) => {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="user@example.com"
-                disabled={!isCreating} // Email cannot be changed after creation
               />
-              {!isCreating && (
-                <p className="text-xs text-gray-500 mt-1">Email cannot be changed after creation</p>
-              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -300,19 +297,17 @@ const OwnerPanel: React.FC<OwnerPanelProps> = ({ token }) => {
               </select>
             </div>
 
-            {isCreating && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <Mail className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-900">Account Activation</p>
-                    <p className="text-sm text-blue-700 mt-1">
-                      A temporary password will be sent to the user's email. They must activate their account within 48 hours.
-                    </p>
-                  </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start space-x-3">
+                <Mail className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Account Activation</p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    A temporary password will be sent to the user's email. They must activate their account within 48 hours.
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
 
             <div className="flex justify-end space-x-3 pt-4">
               <button
@@ -326,8 +321,8 @@ const OwnerPanel: React.FC<OwnerPanelProps> = ({ token }) => {
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
               >
-                <Save className="h-4 w-4" />
-                <span>{isCreating ? 'Create User' : 'Save Changes'}</span>
+                <Plus className="h-4 w-4" />
+                <span>Create User</span>
               </button>
             </div>
           </form>
@@ -438,11 +433,11 @@ const OwnerPanel: React.FC<OwnerPanelProps> = ({ token }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => setEditingUser(user)}
-                        className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
-                        title="Edit user"
+                        onClick={() => setViewingProfileId(user.id)}
+                        className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded"
+                        title="View/Edit profile"
                       >
-                        <Edit className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleResetPassword(user.id)}
@@ -483,17 +478,30 @@ const OwnerPanel: React.FC<OwnerPanelProps> = ({ token }) => {
         )}
       </div>
 
-      {/* User Form Modal */}
-      {(editingUser || isCreating) && (
+      {/* User Creation Form Modal */}
+      {isCreating && (
         <UserForm
-          user={editingUser || emptyUser}
-          onSave={isCreating ? handleCreateUser : () => {}}
+          user={emptyUser}
+          onSave={handleCreateUser}
           onCancel={() => {
-            setEditingUser(null);
             setIsCreating(false);
             setError('');
           }}
-          isCreating={isCreating}
+          isCreating={true}
+        />
+      )}
+
+      {/* User Profile Modal */}
+      {viewingProfileId && (
+        <UserProfileModal
+          isOpen={true}
+          onClose={() => {
+            setViewingProfileId(null);
+            fetchUsers(); // Refresh users list in case profile was updated
+          }}
+          userId={viewingProfileId}
+          token={token}
+          isOwner={true}
         />
       )}
     </div>

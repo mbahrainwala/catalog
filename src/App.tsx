@@ -7,6 +7,7 @@ import ProductFilters from './components/ProductFilters';
 import ProductDetails from './components/ProductDetails';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import ResetPasswordModal from './components/ResetPasswordModal';
+import UserProfileModal from './components/UserProfileModal';
 import ContactUs from './components/ContactUs';
 import AboutUs from './components/AboutUs';
 
@@ -79,6 +80,7 @@ function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [showUserProfileModal, setShowUserProfileModal] = useState(false);
   const [resetToken, setResetToken] = useState('');
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -368,6 +370,17 @@ function App() {
                         <p className="text-xs text-gray-500">{user.email}</p>
                         <p className="text-xs text-blue-600 font-medium">{user.role.replace('ROLE_', '')}</p>
                       </div>
+                      
+                      <button
+                        onClick={() => {
+                          setShowUserProfileModal(true);
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                      >
+                        <User className="h-4 w-4" />
+                        <span>My Profile</span>
+                      </button>
                       
                       <button
                         onClick={() => {
@@ -726,6 +739,17 @@ function App() {
         }}
         token={resetToken}
       />
+
+      {/* User Profile Modal */}
+      {user && token && (
+        <UserProfileModal
+          isOpen={showUserProfileModal}
+          onClose={() => setShowUserProfileModal(false)}
+          userId={user.id}
+          token={token}
+          isOwner={false} // User viewing their own profile
+        />
+      )}
 
       {/* Product Details Modal */}
       {selectedProductId && (

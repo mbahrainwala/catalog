@@ -6,7 +6,6 @@ import com.catalog.dto.ForgotPasswordRequest;
 import com.catalog.dto.JwtResponse;
 import com.catalog.dto.LoginRequest;
 import com.catalog.dto.ResetPasswordRequest;
-import com.catalog.dto.SignupRequest;
 import com.catalog.entity.User;
 import com.catalog.repository.UserRepository;
 import com.catalog.security.JwtUtils;
@@ -71,7 +70,7 @@ public class AuthController {
                     if (user.isActivationExpired()) {
                         // Delete expired account
                         userRepository.delete(user);
-                        response.put("message", "Account activation deadline has expired. Please create a new account.");
+                        response.put("message", "Account activation deadline has expired. Please contact your administrator to create a new account.");
                         return ResponseEntity.badRequest().body(response);
                     } else {
                         // Account needs activation
@@ -105,33 +104,6 @@ public class AuthController {
             logger.error("Authentication failed for user: {}", loginRequest.getEmail(), e);
             response.put("message", "Invalid email or password");
             return ResponseEntity.badRequest().body(response);
-        }
-    }
-    
-    @PostMapping("/signup")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
-        Map<String, String> response = new HashMap<>();
-        
-        try {
-            if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-                response.put("message", "Error: Email is already in use!");
-                return ResponseEntity.badRequest().body(response);
-            }
-            
-            // Create user with temporary password
-            userActivationService.createUserWithTemporaryPassword(
-                signUpRequest.getEmail(),
-                signUpRequest.getFirstName(),
-                signUpRequest.getLastName()
-            );
-            
-            response.put("message", "Account created successfully! Please check your email for activation instructions. You have 48 hours to activate your account.");
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            logger.error("Error creating user account", e);
-            response.put("message", "Failed to create account: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
         }
     }
     
@@ -249,12 +221,16 @@ public class AuthController {
         Map<String, String> response = new HashMap<>();
         
         try {
-            logger.info("Forgot password request for email: {}", forgotPasswordRequest.getEmail());
+            logger.info("Forgot password request for email: {} with identity verification", forgotPasswordRequest.getEmail());
             
-            boolean success = passwordResetService.initiatePasswordReset(forgotPasswordRequest.getEmail());
+            boolean success = passwordResetService.initiatePasswordReset(
+                forgotPasswordRequest.getEmail(),
+                forgotPasswordRequest.getFirstName(),
+                forgotPasswordRequest.getLastName()
+            );
             
             if (success) {
-                response.put("message", "If an account with that email exists, we've sent a password reset link to it.");
+                response.put("message", "If an account with the provided information exists, we've sent a password reset link to the email address.");
                 return ResponseEntity.ok(response);
             } else {
                 response.put("message", "Failed to process password reset request");
