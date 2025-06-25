@@ -5,6 +5,7 @@ import AdminPanel from './components/AdminPanel';
 import ProductFilters from './components/ProductFilters';
 import ProductDetails from './components/ProductDetails';
 import ChangePasswordModal from './components/ChangePasswordModal';
+import ResetPasswordModal from './components/ResetPasswordModal';
 
 interface ProductImage {
   id: number;
@@ -74,6 +75,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resetToken, setResetToken] = useState('');
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -87,6 +90,17 @@ function App() {
       setToken(savedToken);
       checkAuthStatus(savedToken);
     }
+    
+    // Check for reset token in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetTokenParam = urlParams.get('token');
+    if (resetTokenParam) {
+      setResetToken(resetTokenParam);
+      setShowResetPasswordModal(true);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
     fetchProducts();
     fetchCategories();
   }, []);
@@ -567,6 +581,16 @@ function App() {
           token={token}
         />
       )}
+
+      {/* Reset Password Modal */}
+      <ResetPasswordModal
+        isOpen={showResetPasswordModal}
+        onClose={() => {
+          setShowResetPasswordModal(false);
+          setResetToken('');
+        }}
+        token={resetToken}
+      />
 
       {/* Product Details Modal */}
       {selectedProductId && (

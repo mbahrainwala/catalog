@@ -3,7 +3,6 @@ package com.catalog.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
-import java.util.Set;
 
 @Entity
 @Table(name = "usr")
@@ -45,6 +44,15 @@ public class User {
     @Column(nullable = false)
     private Boolean enabled = true;
     
+    @Column(name = "is_temporary_password", nullable = false)
+    private Boolean isTemporaryPassword = false;
+    
+    @Column(name = "account_activated", nullable = false)
+    private Boolean accountActivated = false;
+    
+    @Column(name = "activation_deadline")
+    private LocalDateTime activationDeadline;
+    
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     
@@ -71,6 +79,15 @@ public class User {
         this.password = password;
         this.firstName = firstName;
         this.lastName = lastName;
+    }
+    
+    // Helper methods
+    public boolean isActivationExpired() {
+        return activationDeadline != null && LocalDateTime.now().isAfter(activationDeadline);
+    }
+    
+    public boolean needsActivation() {
+        return !accountActivated && isTemporaryPassword;
     }
     
     // Getters and Setters
@@ -136,6 +153,30 @@ public class User {
     
     public void setEnabled(Boolean enabled) {
         this.enabled = enabled;
+    }
+    
+    public Boolean getIsTemporaryPassword() {
+        return isTemporaryPassword;
+    }
+    
+    public void setIsTemporaryPassword(Boolean isTemporaryPassword) {
+        this.isTemporaryPassword = isTemporaryPassword;
+    }
+    
+    public Boolean getAccountActivated() {
+        return accountActivated;
+    }
+    
+    public void setAccountActivated(Boolean accountActivated) {
+        this.accountActivated = accountActivated;
+    }
+    
+    public LocalDateTime getActivationDeadline() {
+        return activationDeadline;
+    }
+    
+    public void setActivationDeadline(LocalDateTime activationDeadline) {
+        this.activationDeadline = activationDeadline;
     }
     
     public LocalDateTime getCreatedAt() {
