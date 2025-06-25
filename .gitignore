@@ -23,9 +23,3 @@ dist-ssr
 *.sln
 *.sw?
 .env
-/uploads/products/*.jpg
-/node/node.exe
-/node/npx.cmd
-/node/npx
-/node/npm.cmd
-/node/npm

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, ShoppingBag, Star, Heart, Eye, User, LogOut, Settings, Package } from 'lucide-react';
+import { Search, Filter, ShoppingBag, Eye, User, LogOut, Settings, Package } from 'lucide-react';
 import LoginModal from './components/LoginModal';
 import AdminPanel from './components/AdminPanel';
 import ProductFilters from './components/ProductFilters';
@@ -21,7 +21,6 @@ interface Product {
   price: number;
   category: string;
   primaryImageUrl?: string; // Primary image URL from uploaded images
-  rating: number;
   inStock: boolean;
   images?: ProductImage[]; // Add images array
   filterValues?: Record<string, string[]>;
@@ -240,15 +239,6 @@ function App() {
     return placeholders[category.toLowerCase()] || placeholders['default'];
   };
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`w-4 h-4 ${i < Math.floor(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
-      />
-    ));
-  };
-
   // Check if filters are available and have active values
   const hasAvailableFilters = availableFilters.length > 0 && 
     availableFilters.some(filter => 
@@ -441,12 +431,6 @@ function App() {
                               >
                                 <Eye className="h-5 w-5 text-gray-700" />
                               </button>
-                              <button 
-                                className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Heart className="h-5 w-5 text-gray-700" />
-                              </button>
                             </div>
                           </div>
                           {!product.inStock && (
@@ -475,16 +459,9 @@ function App() {
                             </span>
                           </div>
                           
-                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                          <p className="text-sm text-gray-600 mb-4 line-clamp-2">
                             {product.description}
                           </p>
-                          
-                          <div className="flex items-center mb-3">
-                            <div className="flex items-center space-x-1">
-                              {renderStars(product.rating)}
-                            </div>
-                            <span className="text-sm text-gray-500 ml-2">({product.rating})</span>
-                          </div>
                           
                           <div className="flex items-center justify-between">
                             <span className="text-2xl font-bold text-gray-900">

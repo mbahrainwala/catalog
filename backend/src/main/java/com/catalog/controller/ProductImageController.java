@@ -6,6 +6,8 @@ import com.catalog.entity.ProductImage;
 import com.catalog.mapper.ProductImageMapper;
 import com.catalog.service.ProductImageService;
 import com.catalog.service.ProductService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,8 @@ import java.util.Optional;
 @CrossOrigin(origins = "*")
 public class ProductImageController {
     
+    private static final Logger logger = LoggerFactory.getLogger(ProductImageController.class);
+    
     @Autowired
     private ProductImageService productImageService;
     
@@ -37,12 +41,12 @@ public class ProductImageController {
     @Transactional(readOnly = true)
     public ResponseEntity<?> getProductImagesPublic(@PathVariable Long productId) {
         try {
-            System.out.println("GET /api/products/" + productId + "/images (public)");
+            logger.debug("GET /api/products/{}/images (public)", productId);
             
             // Verify product exists first
             Optional<Product> productOpt = productService.getProductById(productId);
             if (!productOpt.isPresent()) {
-                System.err.println("Product not found: " + productId);
+                logger.warn("Product not found: {}", productId);
                 Map<String, String> response = new HashMap<>();
                 response.put("message", "Product not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -52,13 +56,12 @@ public class ProductImageController {
             List<ProductImage> images = productImageService.getProductImages(productId);
             List<ProductImageDto> imageDtos = productImageMapper.toDtoList(images);
             
-            System.out.println("Successfully returning " + imageDtos.size() + " images for product " + productId);
+            logger.debug("Successfully returning {} images for product {}", imageDtos.size(), productId);
             
             return ResponseEntity.ok(imageDtos);
             
         } catch (Exception e) {
-            System.err.println("Error fetching product images for product " + productId + ": " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error fetching product images for product {}", productId, e);
             
             Map<String, String> response = new HashMap<>();
             response.put("message", "Internal server error while fetching images");
@@ -72,12 +75,12 @@ public class ProductImageController {
     @Transactional(readOnly = true)
     public ResponseEntity<?> getProductImages(@PathVariable Long productId) {
         try {
-            System.out.println("GET /api/admin/products/" + productId + "/images");
+            logger.debug("GET /api/admin/products/{}/images", productId);
             
             // Verify product exists first
             Optional<Product> productOpt = productService.getProductById(productId);
             if (!productOpt.isPresent()) {
-                System.err.println("Product not found: " + productId);
+                logger.warn("Product not found: {}", productId);
                 Map<String, String> response = new HashMap<>();
                 response.put("message", "Product not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -87,13 +90,12 @@ public class ProductImageController {
             List<ProductImage> images = productImageService.getProductImages(productId);
             List<ProductImageDto> imageDtos = productImageMapper.toDtoList(images);
             
-            System.out.println("Successfully returning " + imageDtos.size() + " images for product " + productId);
+            logger.debug("Successfully returning {} images for product {}", imageDtos.size(), productId);
             
             return ResponseEntity.ok(imageDtos);
             
         } catch (Exception e) {
-            System.err.println("Error fetching product images for product " + productId + ": " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error fetching product images for product {}", productId, e);
             
             Map<String, String> response = new HashMap<>();
             response.put("message", "Internal server error while fetching images");
@@ -112,18 +114,17 @@ public class ProductImageController {
             @RequestParam(value = "isPrimary", required = false) Boolean isPrimary) {
         
         try {
-            System.out.println("POST /api/admin/products/" + productId + "/images");
-            System.out.println("File name: " + (file != null ? file.getOriginalFilename() : "null"));
-            System.out.println("File size: " + (file != null ? file.getSize() : "null"));
-            System.out.println("Content type: " + (file != null ? file.getContentType() : "null"));
-            System.out.println("Alt text: " + altText);
-            System.out.println("Display order: " + displayOrder);
-            System.out.println("Is primary: " + isPrimary);
+            logger.info("POST /api/admin/products/{}/images", productId);
+            logger.debug("File name: {}, File size: {}, Content type: {}, Alt text: {}, Display order: {}, Is primary: {}", 
+                    file != null ? file.getOriginalFilename() : "null",
+                    file != null ? file.getSize() : "null",
+                    file != null ? file.getContentType() : "null",
+                    altText, displayOrder, isPrimary);
             
             // Verify product exists
             Optional<Product> productOpt = productService.getProductById(productId);
             if (!productOpt.isPresent()) {
-                System.err.println("Product not found: " + productId);
+                logger.warn("Product not found: {}", productId);
                 Map<String, String> response = new HashMap<>();
                 response.put("message", "Product not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -131,7 +132,7 @@ public class ProductImageController {
             
             // Validate file
             if (file == null || file.isEmpty()) {
-                System.err.println("No file provided");
+                logger.warn("No file provided for product {}", productId);
                 Map<String, String> response = new HashMap<>();
                 response.put("message", "No file provided");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
@@ -144,22 +145,19 @@ public class ProductImageController {
             // Convert to DTO before returning
             ProductImageDto imageDto = productImageMapper.toDto(savedImage);
             
-            System.out.println("Image saved successfully with ID: " + savedImage.getId());
-            System.out.println("Image URL: " + savedImage.getImageUrl());
-            System.out.println("Transaction will be committed automatically");
+            logger.info("Image saved successfully with ID: {}, URL: {}", savedImage.getId(), savedImage.getImageUrl());
             
             // Return the saved image DTO
             return ResponseEntity.status(HttpStatus.CREATED).body(imageDto);
             
         } catch (IllegalArgumentException e) {
-            System.err.println("Validation error: " + e.getMessage());
+            logger.warn("Validation error during image upload for product {}: {}", productId, e.getMessage());
             Map<String, String> response = new HashMap<>();
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
             
         } catch (Exception e) {
-            System.err.println("Unexpected error during image upload: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Unexpected error during image upload for product {}", productId, e);
             Map<String, String> response = new HashMap<>();
             response.put("message", "Internal server error during upload");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
@@ -177,25 +175,24 @@ public class ProductImageController {
             @RequestParam(value = "isPrimary", required = false) Boolean isPrimary) {
         
         try {
-            System.out.println("PUT /api/admin/products/" + productId + "/images/" + imageId);
+            logger.info("PUT /api/admin/products/{}/images/{}", productId, imageId);
             
             ProductImage updatedImage = productImageService.updateProductImage(imageId, altText, displayOrder, isPrimary);
             if (updatedImage != null) {
                 // Convert to DTO before returning
                 ProductImageDto imageDto = productImageMapper.toDto(updatedImage);
                 
-                System.out.println("Image updated successfully, transaction will be committed");
+                logger.info("Image updated successfully");
                 return ResponseEntity.ok(imageDto);
             } else {
-                System.err.println("Image not found: " + imageId);
+                logger.warn("Image not found: {}", imageId);
                 Map<String, String> response = new HashMap<>();
                 response.put("message", "Image not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
             
         } catch (Exception e) {
-            System.err.println("Error updating image: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error updating image {}", imageId, e);
             Map<String, String> response = new HashMap<>();
             response.put("message", "Internal server error during update");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
@@ -207,25 +204,24 @@ public class ProductImageController {
     @Transactional
     public ResponseEntity<?> setPrimaryImage(@PathVariable Long productId, @PathVariable Long imageId) {
         try {
-            System.out.println("PUT /api/admin/products/" + productId + "/images/" + imageId + "/primary");
+            logger.info("PUT /api/admin/products/{}/images/{}/primary", productId, imageId);
             
             productImageService.setPrimaryImage(productId, imageId);
             
             Map<String, String> response = new HashMap<>();
             response.put("message", "Primary image updated successfully");
             
-            System.out.println("Primary image set successfully, transaction will be committed");
+            logger.info("Primary image set successfully");
             return ResponseEntity.ok(response);
             
         } catch (IllegalArgumentException e) {
-            System.err.println("Validation error setting primary image: " + e.getMessage());
+            logger.warn("Validation error setting primary image for product {}, image {}: {}", productId, imageId, e.getMessage());
             Map<String, String> response = new HashMap<>();
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
             
         } catch (Exception e) {
-            System.err.println("Error setting primary image: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error setting primary image for product {}, image {}", productId, imageId, e);
             Map<String, String> response = new HashMap<>();
             response.put("message", "Internal server error while setting primary image");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
@@ -237,24 +233,23 @@ public class ProductImageController {
     @Transactional
     public ResponseEntity<?> deleteProductImage(@PathVariable Long productId, @PathVariable Long imageId) {
         try {
-            System.out.println("DELETE /api/admin/products/" + productId + "/images/" + imageId);
+            logger.info("DELETE /api/admin/products/{}/images/{}", productId, imageId);
             
             boolean deleted = productImageService.deleteProductImage(imageId);
             if (deleted) {
                 Map<String, String> response = new HashMap<>();
                 response.put("message", "Image deleted successfully");
-                System.out.println("Image deleted successfully, transaction will be committed");
+                logger.info("Image deleted successfully");
                 return ResponseEntity.ok(response);
             } else {
-                System.err.println("Image not found: " + imageId);
+                logger.warn("Image not found: {}", imageId);
                 Map<String, String> response = new HashMap<>();
                 response.put("message", "Image not found");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
             
         } catch (Exception e) {
-            System.err.println("Error deleting image: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error deleting image {}", imageId, e);
             Map<String, String> response = new HashMap<>();
             response.put("message", "Internal server error during deletion");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);

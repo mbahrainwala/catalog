@@ -17,6 +17,8 @@ import com.catalog.service.FilterService;
 import com.catalog.service.ProductFilterService;
 import com.catalog.service.ProductService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +35,8 @@ import java.util.Optional;
 @CrossOrigin(origins = "*")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
     
     @Autowired
     private ProductService productService;
@@ -66,8 +70,7 @@ public class AdminController {
             List<ProductDto> productDtos = productMapper.toDtoList(products);
             return ResponseEntity.ok(productDtos);
         } catch (Exception e) {
-            System.err.println("Error in getAllProducts: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error in getAllProducts", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -79,8 +82,7 @@ public class AdminController {
             return product.map(p -> ResponseEntity.ok(productMapper.toDto(p)))
                          .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
-            System.err.println("Error in getProductById: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error in getProductById for id: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -88,7 +90,7 @@ public class AdminController {
     @PostMapping("/products")
     public ResponseEntity<?> createProduct(@Valid @RequestBody Map<String, Object> productData) {
         try {
-            System.out.println("Creating product with data: " + productData);
+            logger.info("Creating product with data: {}", productData);
             
             // Extract product data
             Product product = new Product();
@@ -97,32 +99,27 @@ public class AdminController {
             product.setPrice(new java.math.BigDecimal(productData.get("price").toString()));
             product.setCategory((String) productData.get("category"));
             
-            if (productData.get("rating") != null) {
-                product.setRating(new java.math.BigDecimal(productData.get("rating").toString()));
-            }
-            
             product.setInStock((Boolean) productData.get("inStock"));
             
             // Save product first
             Product savedProduct = productService.saveProduct(product);
-            System.out.println("Product saved with ID: " + savedProduct.getId());
+            logger.info("Product saved with ID: {}", savedProduct.getId());
             
             // Handle filter values if provided
             @SuppressWarnings("unchecked")
             Map<String, List<String>> filterData = (Map<String, List<String>>) productData.get("filterValues");
             if (filterData != null && !filterData.isEmpty()) {
-                System.out.println("Updating product filters: " + filterData);
+                logger.info("Updating product filters: {}", filterData);
                 productFilterService.updateProductFilters(savedProduct, filterData);
             }
             
             ProductDto productDto = productMapper.toDto(savedProduct);
             
-            System.out.println("Product created successfully");
+            logger.info("Product created successfully");
             return ResponseEntity.status(HttpStatus.CREATED).body(productDto);
             
         } catch (Exception e) {
-            System.err.println("Error creating product: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error creating product", e);
             
             Map<String, String> response = new HashMap<>();
             response.put("message", "Failed to create product: " + e.getMessage());
@@ -134,7 +131,7 @@ public class AdminController {
     public ResponseEntity<?> updateProduct(@PathVariable Long id, 
                                           @Valid @RequestBody Map<String, Object> productData) {
         try {
-            System.out.println("Updating product " + id + " with data: " + productData);
+            logger.info("Updating product {} with data: {}", id, productData);
             
             Optional<Product> existingProductOpt = productService.getProductById(id);
             if (!existingProductOpt.isPresent()) {
@@ -147,10 +144,6 @@ public class AdminController {
             product.setPrice(new java.math.BigDecimal(productData.get("price").toString()));
             product.setCategory((String) productData.get("category"));
             
-            if (productData.get("rating") != null) {
-                product.setRating(new java.math.BigDecimal(productData.get("rating").toString()));
-            }
-            
             product.setInStock((Boolean) productData.get("inStock"));
             
             // Update product
@@ -160,18 +153,17 @@ public class AdminController {
             @SuppressWarnings("unchecked")
             Map<String, List<String>> filterData = (Map<String, List<String>>) productData.get("filterValues");
             if (filterData != null) {
-                System.out.println("Updating product filters: " + filterData);
+                logger.info("Updating product filters: {}", filterData);
                 productFilterService.updateProductFilters(updatedProduct, filterData);
             }
             
             ProductDto productDto = productMapper.toDto(updatedProduct);
             
-            System.out.println("Product updated successfully");
+            logger.info("Product updated successfully");
             return ResponseEntity.ok(productDto);
             
         } catch (Exception e) {
-            System.err.println("Error updating product: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error updating product {}", id, e);
             
             Map<String, String> response = new HashMap<>();
             response.put("message", "Failed to update product: " + e.getMessage());
@@ -186,8 +178,7 @@ public class AdminController {
             return deleted ? ResponseEntity.noContent().build() 
                           : ResponseEntity.notFound().build();
         } catch (Exception e) {
-            System.err.println("Error deleting product: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error deleting product {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

@@ -31,11 +31,6 @@ public class Product {
     @Column(nullable = false)
     private String category;
     
-    @DecimalMin(value = "0.0", message = "Rating must be at least 0")
-    @DecimalMax(value = "5.0", message = "Rating must not exceed 5")
-    @Column(precision = 2, scale = 1)
-    private BigDecimal rating;
-    
     @Column(name = "in_stock", nullable = false)
     private Boolean inStock = true;
     
@@ -105,14 +100,6 @@ public class Product {
     
     public void setCategory(String category) {
         this.category = category;
-    }
-    
-    public BigDecimal getRating() {
-        return rating;
-    }
-    
-    public void setRating(BigDecimal rating) {
-        this.rating = rating;
     }
     
     public Boolean getInStock() {

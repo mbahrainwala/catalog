@@ -13,7 +13,6 @@ public class ProductDto {
     private BigDecimal price;
     private String category;
     private String primaryImageUrl; // Primary image URL from uploaded images
-    private BigDecimal rating;
     private Boolean inStock;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -23,14 +22,12 @@ public class ProductDto {
     public ProductDto() {}
     
     public ProductDto(Long id, String name, String description, BigDecimal price, String category,
-                     BigDecimal rating, Boolean inStock, 
-                     LocalDateTime createdAt, LocalDateTime updatedAt) {
+                     Boolean inStock, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.price = price;
         this.category = category;
-        this.rating = rating;
         this.inStock = inStock;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -83,14 +80,6 @@ public class ProductDto {
     
     public void setPrimaryImageUrl(String primaryImageUrl) {
         this.primaryImageUrl = primaryImageUrl;
-    }
-    
-    public BigDecimal getRating() {
-        return rating;
-    }
-    
-    public void setRating(BigDecimal rating) {
-        this.rating = rating;
     }
     
     public Boolean getInStock() {

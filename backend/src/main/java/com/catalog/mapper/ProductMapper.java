@@ -6,6 +6,8 @@ import com.catalog.entity.Product;
 import com.catalog.entity.ProductImage;
 import com.catalog.service.ProductFilterService;
 import com.catalog.service.ProductImageService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class ProductMapper {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ProductMapper.class);
     
     @Autowired
     private ProductFilterService productFilterService;
@@ -37,7 +41,6 @@ public class ProductMapper {
             product.getDescription(),
             product.getPrice(),
             product.getCategory(),
-            product.getRating(),
             product.getInStock(),
             product.getCreatedAt(),
             product.getUpdatedAt()
@@ -49,7 +52,7 @@ public class ProductMapper {
                 Map<String, List<String>> filterValues = productFilterService.getProductFilterValues(product.getId());
                 dto.setFilterValues(filterValues);
             } catch (Exception e) {
-                System.err.println("Error fetching filter values for product " + product.getId() + ": " + e.getMessage());
+                logger.error("Error fetching filter values for product {}", product.getId(), e);
             }
             
             try {
@@ -69,7 +72,7 @@ public class ProductMapper {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Error fetching images for product " + product.getId() + ": " + e.getMessage());
+                logger.error("Error fetching images for product {}", product.getId(), e);
             }
         }
         
@@ -87,7 +90,6 @@ public class ProductMapper {
         product.setDescription(productDto.getDescription());
         product.setPrice(productDto.getPrice());
         product.setCategory(productDto.getCategory());
-        product.setRating(productDto.getRating());
         product.setInStock(productDto.getInStock());
         product.setCreatedAt(productDto.getCreatedAt());
         product.setUpdatedAt(productDto.getUpdatedAt());

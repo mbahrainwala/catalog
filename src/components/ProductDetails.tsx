@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, ShoppingBag, Heart, Share2, ChevronLeft, ChevronRight, Truck, Shield, RotateCcw, Package } from 'lucide-react';
+import { X, ShoppingBag, ChevronLeft, ChevronRight, Truck, Shield, RotateCcw, Package } from 'lucide-react';
 
 interface ProductImage {
   id: number;
@@ -17,7 +17,6 @@ interface Product {
   price: number;
   category: string;
   primaryImageUrl?: string;
-  rating: number;
   inStock: boolean;
   images?: ProductImage[];
   filterValues?: Record<string, string[]>;
@@ -75,15 +74,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
     } finally {
       setLoading(false);
     }
-  };
-
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`w-5 h-5 ${i < Math.floor(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
-      />
-    ));
   };
 
   // Get placeholder image based on category
@@ -267,13 +257,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
                 
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
                 
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="flex items-center space-x-1">
-                    {renderStars(product.rating)}
-                    <span className="text-sm text-gray-600 ml-2">({product.rating})</span>
-                  </div>
-                </div>
-                
                 <div className="text-4xl font-bold text-gray-900 mb-6">
                   ${product.price}
                 </div>
@@ -345,14 +328,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
                   >
                     <ShoppingBag className="h-5 w-5" />
                     <span>{product.inStock ? 'Add to Cart' : 'Out of Stock'}</span>
-                  </button>
-                  
-                  <button className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                    <Heart className="h-5 w-5 text-gray-600" />
-                  </button>
-                  
-                  <button className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                    <Share2 className="h-5 w-5 text-gray-600" />
                   </button>
                 </div>
               </div>

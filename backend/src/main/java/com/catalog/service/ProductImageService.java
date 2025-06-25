@@ -3,6 +3,8 @@ package com.catalog.service;
 import com.catalog.entity.Product;
 import com.catalog.entity.ProductImage;
 import com.catalog.repository.ProductImageRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,8 @@ import java.util.UUID;
 @Transactional // Make the entire service transactional
 public class ProductImageService {
     
+    private static final Logger logger = LoggerFactory.getLogger(ProductImageService.class);
+    
     @Autowired
     private ProductImageRepository productImageRepository;
     
@@ -35,21 +39,20 @@ public class ProductImageService {
     @Transactional(readOnly = true)
     public List<ProductImage> getProductImages(Long productId) {
         try {
-            System.out.println("Fetching images for product ID: " + productId);
+            logger.debug("Fetching images for product ID: {}", productId);
             
             if (productId == null) {
-                System.err.println("Product ID is null");
+                logger.warn("Product ID is null");
                 return Collections.emptyList();
             }
             
             List<ProductImage> images = productImageRepository.findByProductIdOrderByDisplayOrderAscIdAsc(productId);
-            System.out.println("Found " + images.size() + " images for product " + productId);
+            logger.debug("Found {} images for product {}", images.size(), productId);
             
             return images;
             
         } catch (Exception e) {
-            System.err.println("Error fetching product images for product " + productId + ": " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error fetching product images for product {}", productId, e);
             return Collections.emptyList();
         }
     }
@@ -62,7 +65,7 @@ public class ProductImageService {
             }
             return productImageRepository.findPrimaryImageByProductId(productId);
         } catch (Exception e) {
-            System.err.println("Error fetching primary image for product " + productId + ": " + e.getMessage());
+            logger.error("Error fetching primary image for product {}", productId, e);
             return Optional.empty();
         }
     }
@@ -70,7 +73,7 @@ public class ProductImageService {
     @Transactional
     public ProductImage saveProductImage(Product product, MultipartFile file, String altText, Integer displayOrder, Boolean isPrimary) throws IOException {
         try {
-            System.out.println("Starting image save process for product: " + product.getId());
+            logger.info("Starting image save process for product: {}", product.getId());
             
             // Validate inputs
             if (product == null || product.getId() == null) {
@@ -94,7 +97,7 @@ public class ProductImageService {
             
             // Check if product already has 5 images
             long imageCount = productImageRepository.countByProductId(product.getId());
-            System.out.println("Current image count for product " + product.getId() + ": " + imageCount);
+            logger.debug("Current image count for product {}: {}", product.getId(), imageCount);
             
             if (imageCount >= 5) {
                 throw new IllegalArgumentException("Product can have maximum 5 images");
@@ -111,19 +114,18 @@ public class ProductImageService {
                 : "";
             String filename = UUID.randomUUID().toString() + extension;
             
-            System.out.println("Generated filename: " + filename);
-            System.out.println("Upload path: " + uploadPath);
+            logger.debug("Generated filename: {}, Upload path: {}", filename, uploadPath);
             
             // Create upload directory if it doesn't exist
             Path uploadDir = Paths.get(uploadPath);
             if (!Files.exists(uploadDir)) {
-                System.out.println("Creating upload directory: " + uploadDir.toAbsolutePath());
+                logger.info("Creating upload directory: {}", uploadDir.toAbsolutePath());
                 Files.createDirectories(uploadDir);
             }
             
             // Save file first
             Path filePath = uploadDir.resolve(filename);
-            System.out.println("Saving file to: " + filePath.toAbsolutePath());
+            logger.debug("Saving file to: {}", filePath.toAbsolutePath());
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
             
             // Create ProductImage entity
@@ -138,14 +140,14 @@ public class ProductImageService {
             
             // Handle primary image logic
             if (isPrimary != null && isPrimary) {
-                System.out.println("Setting as primary image");
+                logger.debug("Setting as primary image");
                 // Clear existing primary images for this product
                 productImageRepository.clearPrimaryImageForProduct(product.getId());
                 productImage.setIsPrimary(true);
             } else {
                 // If this is the first image, make it primary
                 if (imageCount == 0) {
-                    System.out.println("First image - setting as primary");
+                    logger.debug("First image - setting as primary");
                     productImage.setIsPrimary(true);
                 } else {
                     productImage.setIsPrimary(false);
@@ -158,21 +160,18 @@ public class ProductImageService {
             // Force flush to ensure database is updated immediately
             productImageRepository.flush();
             
-            System.out.println("Image saved successfully with ID: " + savedImage.getId());
-            System.out.println("Database transaction will be committed automatically");
+            logger.info("Image saved successfully with ID: {}", savedImage.getId());
             
             return savedImage;
             
         } catch (IllegalArgumentException e) {
-            System.err.println("Validation error in saveProductImage: " + e.getMessage());
+            logger.warn("Validation error in saveProductImage: {}", e.getMessage());
             throw e;
         } catch (IOException e) {
-            System.err.println("IO error in saveProductImage: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("IO error in saveProductImage", e);
             throw new IOException("Failed to save image file: " + e.getMessage(), e);
         } catch (Exception e) {
-            System.err.println("Unexpected error in saveProductImage: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Unexpected error in saveProductImage", e);
             throw new RuntimeException("Failed to save product image: " + e.getMessage(), e);
         }
     }
@@ -180,7 +179,7 @@ public class ProductImageService {
     @Transactional
     public void setPrimaryImage(Long productId, Long imageId) {
         try {
-            System.out.println("Setting primary image for product " + productId + ", image ID: " + imageId);
+            logger.info("Setting primary image for product {}, image ID: {}", productId, imageId);
             
             if (productId == null || imageId == null) {
                 throw new IllegalArgumentException("Product ID and Image ID are required");
@@ -199,17 +198,16 @@ public class ProductImageService {
                 // Force flush to ensure database is updated immediately
                 productImageRepository.flush();
                 
-                System.out.println("Primary image set successfully and committed to database");
+                logger.info("Primary image set successfully");
             } else {
                 throw new IllegalArgumentException("Image not found or doesn't belong to product");
             }
             
         } catch (IllegalArgumentException e) {
-            System.err.println("Validation error in setPrimaryImage: " + e.getMessage());
+            logger.warn("Validation error in setPrimaryImage: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
-            System.err.println("Error setting primary image: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error setting primary image", e);
             throw new RuntimeException("Failed to set primary image: " + e.getMessage(), e);
         }
     }
@@ -217,10 +215,10 @@ public class ProductImageService {
     @Transactional
     public boolean deleteProductImage(Long imageId) {
         try {
-            System.out.println("Deleting image with ID: " + imageId);
+            logger.info("Deleting image with ID: {}", imageId);
             
             if (imageId == null) {
-                System.err.println("Image ID is null");
+                logger.warn("Image ID is null");
                 return false;
             }
             
@@ -237,7 +235,7 @@ public class ProductImageService {
                 // Force flush to ensure database is updated immediately
                 productImageRepository.flush();
                 
-                System.out.println("Image deleted from database successfully");
+                logger.info("Image deleted from database successfully");
                 
                 // Delete file from filesystem (after database deletion)
                 try {
@@ -245,16 +243,16 @@ public class ProductImageService {
                         String filename = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
                         Path filePath = Paths.get(uploadPath).resolve(filename);
                         boolean fileDeleted = Files.deleteIfExists(filePath);
-                        System.out.println("File deletion result: " + fileDeleted + " for file: " + filePath);
+                        logger.debug("File deletion result: {} for file: {}", fileDeleted, filePath);
                     }
                 } catch (IOException e) {
                     // Log error but don't fail the operation since database deletion succeeded
-                    System.err.println("Failed to delete file (database deletion succeeded): " + e.getMessage());
+                    logger.warn("Failed to delete file (database deletion succeeded)", e);
                 }
                 
                 // If this was the primary image, make another image primary
                 if (wasPrimary) {
-                    System.out.println("Deleted image was primary, finding replacement");
+                    logger.debug("Deleted image was primary, finding replacement");
                     List<ProductImage> otherImages = productImageRepository.findByProductIdOrderByDisplayOrderAscIdAsc(productId);
                     if (!otherImages.isEmpty()) {
                         ProductImage newPrimary = otherImages.get(0);
@@ -264,20 +262,19 @@ public class ProductImageService {
                         // Force flush to ensure database is updated immediately
                         productImageRepository.flush();
                         
-                        System.out.println("Set new primary image: " + newPrimary.getId());
+                        logger.info("Set new primary image: {}", newPrimary.getId());
                     }
                 }
                 
-                System.out.println("Image deletion completed and committed to database");
+                logger.info("Image deletion completed");
                 return true;
             }
             
-            System.err.println("Image not found with ID: " + imageId);
+            logger.warn("Image not found with ID: {}", imageId);
             return false;
             
         } catch (Exception e) {
-            System.err.println("Error deleting image " + imageId + ": " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error deleting image {}", imageId, e);
             throw new RuntimeException("Failed to delete image: " + e.getMessage(), e);
         }
     }
@@ -285,10 +282,10 @@ public class ProductImageService {
     @Transactional
     public ProductImage updateProductImage(Long imageId, String altText, Integer displayOrder, Boolean isPrimary) {
         try {
-            System.out.println("Updating image with ID: " + imageId);
+            logger.info("Updating image with ID: {}", imageId);
             
             if (imageId == null) {
-                System.err.println("Image ID is null");
+                logger.warn("Image ID is null");
                 return null;
             }
             
@@ -315,16 +312,15 @@ public class ProductImageService {
                 // Force flush to ensure database is updated immediately
                 productImageRepository.flush();
                 
-                System.out.println("Image updated successfully and committed to database");
+                logger.info("Image updated successfully");
                 return updatedImage;
             }
             
-            System.err.println("Image not found with ID: " + imageId);
+            logger.warn("Image not found with ID: {}", imageId);
             return null;
             
         } catch (Exception e) {
-            System.err.println("Error updating image " + imageId + ": " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error updating image {}", imageId, e);
             throw new RuntimeException("Failed to update image: " + e.getMessage(), e);
         }
     }

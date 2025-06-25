@@ -7,6 +7,8 @@ import com.catalog.entity.FilterValue;
 import com.catalog.repository.ProductFilterRepository;
 import com.catalog.repository.FilterRepository;
 import com.catalog.repository.FilterValueRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class ProductFilterService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ProductFilterService.class);
     
     @Autowired
     private ProductFilterRepository productFilterRepository;
@@ -30,7 +34,7 @@ public class ProductFilterService {
         try {
             return productFilterRepository.findByProductId(productId);
         } catch (Exception e) {
-            System.err.println("Error fetching product filters for product " + productId + ": " + e.getMessage());
+            logger.error("Error fetching product filters for product {}", productId, e);
             return Collections.emptyList();
         }
     }
@@ -38,7 +42,7 @@ public class ProductFilterService {
     @Transactional
     public void updateProductFilters(Product product, Map<String, List<String>> filterData) {
         try {
-            System.out.println("Updating filters for product " + product.getId() + " with data: " + filterData);
+            logger.info("Updating filters for product {} with data: {}", product.getId(), filterData);
             
             // Remove existing filters for this product
             productFilterRepository.deleteByProductId(product.getId());
@@ -58,19 +62,18 @@ public class ProductFilterService {
                             ProductFilter productFilter = new ProductFilter(product, filter, filterValueOpt.get());
                             productFilterRepository.save(productFilter);
                         } else {
-                            System.err.println("Filter value not found: " + filterName + " = " + value);
+                            logger.warn("Filter value not found: {} = {}", filterName, value);
                         }
                     }
                 } else {
-                    System.err.println("Filter not found: " + filterName);
+                    logger.warn("Filter not found: {}", filterName);
                 }
             }
             
-            System.out.println("Product filters updated successfully");
+            logger.info("Product filters updated successfully");
             
         } catch (Exception e) {
-            System.err.println("Error updating product filters: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error updating product filters", e);
             throw e;
         }
     }
@@ -88,7 +91,7 @@ public class ProductFilterService {
                         )
                     ));
         } catch (Exception e) {
-            System.err.println("Error fetching product filter values for product " + productId + ": " + e.getMessage());
+            logger.error("Error fetching product filter values for product {}", productId, e);
             return Collections.emptyMap();
         }
     }
@@ -127,8 +130,7 @@ public class ProductFilterService {
             return new ArrayList<>(result);
             
         } catch (Exception e) {
-            System.err.println("Error finding products by filters: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error finding products by filters", e);
             return Collections.emptyList();
         }
     }
