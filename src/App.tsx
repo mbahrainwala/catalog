@@ -459,9 +459,13 @@ function App() {
                             </span>
                           </div>
                           
-                          <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                            {product.description}
-                          </p>
+                          <div className="text-sm text-gray-600 mb-4 leading-relaxed">
+                            {product.description.split('\n').map((line, index) => (
+                              <div key={index} className={index > 0 ? 'mt-1' : ''}>
+                                {line || '\u00A0'} {/* Non-breaking space for empty lines */}
+                              </div>
+                            ))}
+                          </div>
                           
                           <div className="flex items-center justify-between">
                             <span className="text-2xl font-bold text-gray-900">

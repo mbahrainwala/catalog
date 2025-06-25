@@ -265,7 +265,9 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
               {/* Description */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
-                <p className="text-gray-600 leading-relaxed">{product.description}</p>
+                <div className="text-gray-600 leading-relaxed whitespace-pre-line">
+                  {product.description}
+                </div>
               </div>
 
               {/* Filter Values */}
