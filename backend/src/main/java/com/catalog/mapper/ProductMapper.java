@@ -1,7 +1,9 @@
 package com.catalog.mapper;
 
 import com.catalog.dto.ProductDto;
+import com.catalog.dto.ProductImageDto;
 import com.catalog.entity.Product;
+import com.catalog.entity.ProductImage;
 import com.catalog.service.ProductFilterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -38,7 +40,34 @@ public class ProductMapper {
             dto.setFilterValues(productFilterService.getProductFilterValues(product.getId()));
         }
         
+        // Add images if available
+        if (product.getImages() != null && !product.getImages().isEmpty()) {
+            List<ProductImageDto> imageDtos = product.getImages().stream()
+                    .map(this::toImageDto)
+                    .collect(Collectors.toList());
+            dto.setImages(imageDtos);
+        }
+        
         return dto;
+    }
+    
+    public ProductImageDto toImageDto(ProductImage image) {
+        if (image == null) {
+            return null;
+        }
+        
+        return new ProductImageDto(
+            image.getId(),
+            image.getImageUrl(),
+            image.getOriginalFilename(),
+            image.getAltText(),
+            image.getDisplayOrder(),
+            image.getIsPrimary(),
+            image.getFileSize(),
+            image.getContentType(),
+            image.getCreatedAt(),
+            image.getUpdatedAt()
+        );
     }
     
     public Product toEntity(ProductDto productDto) {

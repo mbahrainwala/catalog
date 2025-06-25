@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
@@ -42,6 +43,10 @@ public class Product {
     
     @Column(name = "in_stock", nullable = false)
     private Boolean inStock = true;
+    
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OrderBy("displayOrder ASC, id ASC")
+    private List<ProductImage> images;
     
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -135,6 +140,14 @@ public class Product {
         this.inStock = inStock;
     }
     
+    public List<ProductImage> getImages() {
+        return images;
+    }
+    
+    public void setImages(List<ProductImage> images) {
+        this.images = images;
+    }
+    
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -149,5 +162,26 @@ public class Product {
     
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    // Helper method to get primary image
+    public ProductImage getPrimaryImage() {
+        if (images == null || images.isEmpty()) {
+            return null;
+        }
+        
+        return images.stream()
+                .filter(ProductImage::getIsPrimary)
+                .findFirst()
+                .orElse(images.get(0)); // Return first image if no primary is set
+    }
+    
+    // Helper method to get primary image URL
+    public String getPrimaryImageUrl() {
+        ProductImage primaryImage = getPrimaryImage();
+        if (primaryImage != null) {
+            return primaryImage.getImageUrl();
+        }
+        return imageUrl; // Fallback to legacy imageUrl field
     }
 }

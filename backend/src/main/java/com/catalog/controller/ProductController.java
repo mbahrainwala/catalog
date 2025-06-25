@@ -99,13 +99,21 @@ public class ProductController {
             }
         }
         
+        // Force load images for each product
+        products = products.stream()
+                .map(product -> {
+                    Optional<Product> productWithImages = productService.getProductWithImages(product.getId());
+                    return productWithImages.orElse(product);
+                })
+                .collect(Collectors.toList());
+        
         List<ProductDto> productDtos = productMapper.toDtoList(products);
         return ResponseEntity.ok(productDtos);
     }
     
     @GetMapping("/{id}")
     public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
-        Optional<Product> product = productService.getProductById(id);
+        Optional<Product> product = productService.getProductWithImages(id);
         return product.map(p -> ResponseEntity.ok(productMapper.toDto(p)))
                      .orElse(ResponseEntity.notFound().build());
     }
@@ -122,7 +130,9 @@ public class ProductController {
                                                    @Valid @RequestBody Product productDetails) {
         Product updatedProduct = productService.updateProduct(id, productDetails);
         if (updatedProduct != null) {
-            ProductDto productDto = productMapper.toDto(updatedProduct);
+            // Get product with images loaded
+            Optional<Product> productWithImages = productService.getProductWithImages(id);
+            ProductDto productDto = productMapper.toDto(productWithImages.orElse(updatedProduct));
             return ResponseEntity.ok(productDto);
         }
         return ResponseEntity.notFound().build();
@@ -144,6 +154,15 @@ public class ProductController {
     @GetMapping("/in-stock")
     public ResponseEntity<List<ProductDto>> getInStockProducts() {
         List<Product> products = productService.getInStockProducts();
+        
+        // Force load images for each product
+        products = products.stream()
+                .map(product -> {
+                    Optional<Product> productWithImages = productService.getProductWithImages(product.getId());
+                    return productWithImages.orElse(product);
+                })
+                .collect(Collectors.toList());
+        
         List<ProductDto> productDtos = productMapper.toDtoList(products);
         return ResponseEntity.ok(productDtos);
     }

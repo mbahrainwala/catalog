@@ -62,13 +62,22 @@ public class AdminController {
     @GetMapping("/products")
     public ResponseEntity<List<ProductDto>> getAllProducts() {
         List<Product> products = productService.getAllProducts();
+        
+        // Force load images for each product
+        products = products.stream()
+                .map(product -> {
+                    Optional<Product> productWithImages = productService.getProductWithImages(product.getId());
+                    return productWithImages.orElse(product);
+                })
+                .toList();
+        
         List<ProductDto> productDtos = productMapper.toDtoList(products);
         return ResponseEntity.ok(productDtos);
     }
     
     @GetMapping("/products/{id}")
     public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
-        Optional<Product> product = productService.getProductById(id);
+        Optional<Product> product = productService.getProductWithImages(id);
         return product.map(p -> ResponseEntity.ok(productMapper.toDto(p)))
                      .orElse(ResponseEntity.notFound().build());
     }
@@ -100,7 +109,9 @@ public class AdminController {
                 productFilterService.updateProductFilters(savedProduct, filterData);
             }
             
-            ProductDto productDto = productMapper.toDto(savedProduct);
+            // Get product with images and filters loaded
+            Optional<Product> productWithDetails = productService.getProductWithImages(savedProduct.getId());
+            ProductDto productDto = productMapper.toDto(productWithDetails.orElse(savedProduct));
             return ResponseEntity.status(HttpStatus.CREATED).body(productDto);
         } catch (Exception e) {
             e.printStackTrace(); // Add logging to see the actual error
@@ -142,7 +153,9 @@ public class AdminController {
                 productFilterService.updateProductFilters(updatedProduct, filterData);
             }
             
-            ProductDto productDto = productMapper.toDto(updatedProduct);
+            // Get product with images and filters loaded
+            Optional<Product> productWithDetails = productService.getProductWithImages(id);
+            ProductDto productDto = productMapper.toDto(productWithDetails.orElse(updatedProduct));
             return ResponseEntity.ok(productDto);
         } catch (Exception e) {
             e.printStackTrace(); // Add logging to see the actual error

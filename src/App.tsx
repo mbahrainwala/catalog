@@ -3,6 +3,7 @@ import { Search, Filter, ShoppingBag, Star, Heart, Eye, User, LogOut, Settings }
 import LoginModal from './components/LoginModal';
 import AdminPanel from './components/AdminPanel';
 import ProductFilters from './components/ProductFilters';
+import ProductDetails from './components/ProductDetails';
 
 interface Product {
   id: number;
@@ -13,6 +14,15 @@ interface Product {
   imageUrl: string;
   rating: number;
   inStock: boolean;
+  images?: ProductImage[];
+}
+
+interface ProductImage {
+  id: number;
+  imageUrl: string;
+  altText: string;
+  displayOrder: number;
+  isPrimary: boolean;
 }
 
 interface User {
@@ -64,6 +74,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   useEffect(() => {
     // Check for existing token on app load
@@ -195,6 +206,18 @@ function App() {
   const handleFiltersChange = (filters: Record<string, string[]>) => {
     console.log('Filters changed:', filters); // Debug log
     setSelectedFilters(filters);
+  };
+
+  const handleProductClick = (productId: number) => {
+    setSelectedProductId(productId);
+  };
+
+  const getProductDisplayImage = (product: Product) => {
+    if (product.images && product.images.length > 0) {
+      const primaryImage = product.images.find(img => img.isPrimary);
+      return primaryImage ? primaryImage.imageUrl : product.images[0].imageUrl;
+    }
+    return product.imageUrl;
   };
 
   const renderStars = (rating: number) => {
@@ -378,11 +401,12 @@ function App() {
                       <div
                         key={product.id}
                         className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer"
+                        onClick={() => handleProductClick(product.id)}
                       >
                         {/* Product Image */}
                         <div className="relative overflow-hidden">
                           <img
-                            src={product.imageUrl}
+                            src={getProductDisplayImage(product)}
                             alt={product.name}
                             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                           />
@@ -436,6 +460,10 @@ function App() {
                                   ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
                                   : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                               }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Add to cart logic here
+                              }}
                             >
                               {product.inStock ? 'Add to Cart' : 'Unavailable'}
                             </button>
@@ -470,6 +498,14 @@ function App() {
         onClose={() => setShowLoginModal(false)}
         onLogin={handleLogin}
       />
+
+      {/* Product Details Modal */}
+      {selectedProductId && (
+        <ProductDetails
+          productId={selectedProductId}
+          onClose={() => setSelectedProductId(null)}
+        />
+      )}
     </div>
   );
 }

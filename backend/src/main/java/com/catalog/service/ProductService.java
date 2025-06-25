@@ -81,4 +81,18 @@ public class ProductService {
     public List<Product> getProductsSortedByPriceDesc() {
         return productRepository.findByOrderByPriceDesc();
     }
+    
+    // Method to get product with images loaded
+    public Optional<Product> getProductWithImages(Long id) {
+        Optional<Product> productOpt = productRepository.findById(id);
+        if (productOpt.isPresent()) {
+            Product product = productOpt.get();
+            // Force loading of images (since it's LAZY)
+            if (product.getImages() != null) {
+                product.getImages().size(); // This triggers the lazy loading
+            }
+            return Optional.of(product);
+        }
+        return Optional.empty();
+    }
 }

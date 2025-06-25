@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Save, X, Package, Tags, Filter as FilterIcon } from 'lucide-react';
 import CategoryManager from './CategoryManager';
 import FilterManager from './FilterManager';
+import ImageUpload from './ImageUpload';
 
 interface Product {
   id?: number;
@@ -13,6 +14,16 @@ interface Product {
   rating: number;
   inStock: boolean;
   filterValues?: Record<string, string[]>;
+  images?: ProductImage[];
+}
+
+interface ProductImage {
+  id: number;
+  imageUrl: string;
+  altText: string;
+  displayOrder: number;
+  isPrimary: boolean;
+  originalFilename: string;
 }
 
 interface Category {
@@ -82,6 +93,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched products:', data); // Debug log
         setProducts(data);
       } else {
         setError('Failed to fetch products');
@@ -162,7 +174,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
       });
 
       if (response.ok) {
-        await fetchProducts();
+        await fetchProducts(); // Refresh the products list
         setEditingProduct(null);
         setIsCreating(false);
         setError('');
@@ -255,6 +267,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
       });
     };
 
+    const handleImagesChange = () => {
+      // Refresh the products list to get updated image data
+      fetchProducts();
+    };
+
     const activeCategoryNames = categories
       .filter(cat => cat.active)
       .sort((a, b) => a.displayOrder - b.displayOrder)
@@ -262,7 +279,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h3 className="text-xl font-bold text-gray-900">
               {product.id ? 'Edit Product' : 'Add New Product'}
@@ -276,7 +293,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Basic Product Information */}
               <div className="space-y-4">
                 <h4 className="text-lg font-medium text-gray-900">Basic Information</h4>
@@ -360,7 +377,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Image URL
+                    Legacy Image URL (Optional)
                   </label>
                   <input
                     type="url"
@@ -369,6 +386,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="https://example.com/image.jpg"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Use image upload below instead of URL when possible
+                  </p>
                 </div>
 
                 <div>
@@ -384,49 +404,66 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                     <option value="false">Out of Stock</option>
                   </select>
                 </div>
+
+                {/* Filter Values */}
+                <div>
+                  <h5 className="text-md font-medium text-gray-900 mb-3">Filter Values</h5>
+                  
+                  {formData.category ? (
+                    categoryFilters.length > 0 ? (
+                      <div className="space-y-4 max-h-64 overflow-y-auto">
+                        {categoryFilters.map(filter => (
+                          <div key={filter.id} className="border border-gray-200 rounded-lg p-3">
+                            <h6 className="font-medium text-gray-900 mb-2">{filter.displayName}</h6>
+                            <div className="space-y-1">
+                              {filter.filterValues
+                                .filter(fv => fv.active)
+                                .sort((a, b) => a.displayOrder - b.displayOrder)
+                                .map(filterValue => (
+                                  <label
+                                    key={filterValue.id}
+                                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedFilterValues[filter.name]?.includes(filterValue.value) || false}
+                                      onChange={(e) => handleFilterValueChange(filter.name, filterValue.value, e.target.checked)}
+                                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-700">{filterValue.displayValue}</span>
+                                  </label>
+                                ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-gray-500 text-sm">
+                        No filters available for this category.
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-center py-4 text-gray-500 text-sm">
+                      Please select a category first to see available filters.
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Filter Values */}
+              {/* Image Upload */}
               <div className="space-y-4">
-                <h4 className="text-lg font-medium text-gray-900">Filter Values</h4>
+                <h4 className="text-lg font-medium text-gray-900">Product Images</h4>
                 
-                {formData.category ? (
-                  categoryFilters.length > 0 ? (
-                    <div className="space-y-4 max-h-96 overflow-y-auto">
-                      {categoryFilters.map(filter => (
-                        <div key={filter.id} className="border border-gray-200 rounded-lg p-4">
-                          <h5 className="font-medium text-gray-900 mb-3">{filter.displayName}</h5>
-                          <div className="space-y-2">
-                            {filter.filterValues
-                              .filter(fv => fv.active)
-                              .sort((a, b) => a.displayOrder - b.displayOrder)
-                              .map(filterValue => (
-                                <label
-                                  key={filterValue.id}
-                                  className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedFilterValues[filter.name]?.includes(filterValue.value) || false}
-                                    onChange={(e) => handleFilterValueChange(filter.name, filterValue.value, e.target.checked)}
-                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                  />
-                                  <span className="text-sm text-gray-700">{filterValue.displayValue}</span>
-                                </label>
-                              ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>No filters available for this category.</p>
-                      <p className="text-sm mt-1">You can add filters to this category in the Categories tab.</p>
-                    </div>
-                  )
+                {product.id ? (
+                  <ImageUpload
+                    productId={product.id}
+                    images={product.images || []}
+                    token={token}
+                    onImagesChange={handleImagesChange}
+                  />
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>Please select a category first to see available filters.</p>
+                  <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                    <p>Save the product first to upload images</p>
                   </div>
                 )}
               </div>
@@ -452,6 +489,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
         </div>
       </div>
     );
+  };
+
+  const getProductDisplayImage = (product: Product) => {
+    if (product.images && product.images.length > 0) {
+      const primaryImage = product.images.find(img => img.isPrimary);
+      return primaryImage ? primaryImage.imageUrl : product.images[0].imageUrl;
+    }
+    return product.imageUrl;
   };
 
   if (loading) {
@@ -545,6 +590,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                       Stock
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Images
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Filters
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -559,7 +607,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                         <div className="flex items-center">
                           <img
                             className="h-10 w-10 rounded-lg object-cover"
-                            src={product.imageUrl}
+                            src={getProductDisplayImage(product)}
                             alt={product.name}
                           />
                           <div className="ml-4">
@@ -588,6 +636,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                         }`}>
                           {product.inStock ? 'In Stock' : 'Out of Stock'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {product.images ? product.images.length : 0} images
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-xs text-gray-500">

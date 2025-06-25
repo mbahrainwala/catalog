@@ -18,6 +18,7 @@ public class ProductDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Map<String, List<String>> filterValues;
+    private List<ProductImageDto> images;
     
     public ProductDto() {}
     
@@ -123,5 +124,13 @@ public class ProductDto {
     
     public void setFilterValues(Map<String, List<String>> filterValues) {
         this.filterValues = filterValues;
+    }
+    
+    public List<ProductImageDto> getImages() {
+        return images;
+    }
+    
+    public void setImages(List<ProductImageDto> images) {
+        this.images = images;
     }
 }
