@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShoppingBag, ChevronLeft, ChevronRight, Package } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Package, Phone, Mail } from 'lucide-react';
 
 interface ProductImage {
   id: number;
@@ -25,15 +25,15 @@ interface Product {
 interface ProductDetailsProps {
   productId: number;
   onClose: () => void;
+  formatPrice: (price: number) => string;
 }
 
-const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) => {
+const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose, formatPrice }) => {
   const [product, setProduct] = useState<Product | null>(null);
   const [productImages, setProductImages] = useState<ProductImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     fetchProduct();
@@ -258,8 +258,13 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
                 
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
                 
-                <div className="text-4xl font-bold text-gray-900 mb-6">
-                  ${product.price}
+                <div className="space-y-2">
+                  <div className="text-4xl font-bold text-gray-900">
+                    {formatPrice(product.price)}
+                  </div>
+                  <div className="text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg inline-block">
+                    For large orders, please contact us for special pricing
+                  </div>
                 </div>
               </div>
 
@@ -297,41 +302,28 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
                 </div>
               )}
 
-              {/* Quantity and Actions */}
-              <div className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <label className="text-sm font-medium text-gray-700">Quantity:</label>
-                  <div className="flex items-center border border-gray-300 rounded-lg">
-                    <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="px-3 py-2 hover:bg-gray-100 transition-colors"
-                      disabled={!product.inStock}
-                    >
-                      -
-                    </button>
-                    <span className="px-4 py-2 border-x border-gray-300">{quantity}</span>
-                    <button
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="px-3 py-2 hover:bg-gray-100 transition-colors"
-                      disabled={!product.inStock}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex space-x-3">
-                  <button
-                    disabled={!product.inStock}
-                    className={`flex-1 flex items-center justify-center space-x-2 py-3 px-6 rounded-lg font-medium transition-all ${
-                      product.inStock
-                        ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg'
-                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    }`}
+              {/* Contact for Purchase */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Interested in this product?</h3>
+                <p className="text-gray-600 mb-4">
+                  Contact our sales team for pricing, availability, and technical specifications.
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <a
+                    href="tel:+97312345678"
+                    className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    <ShoppingBag className="h-5 w-5" />
-                    <span>{product.inStock ? 'Add to Cart' : 'Out of Stock'}</span>
-                  </button>
+                    <Phone className="h-4 w-4" />
+                    <span>Call Now</span>
+                  </a>
+                  <a
+                    href="mailto:sales@industrialcatalog.bh?subject=Inquiry about ${product.name}"
+                    className="flex items-center justify-center space-x-2 bg-white text-blue-600 border border-blue-600 px-4 py-3 rounded-lg hover:bg-blue-50 transition-colors"
+                  >
+                    <Mail className="h-4 w-4" />
+                    <span>Send Email</span>
+                  </a>
                 </div>
               </div>
             </div>

@@ -26,6 +26,10 @@ public class Product {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
     
+    @DecimalMin(value = "0.0", inclusive = false, message = "Cost price must be greater than 0")
+    @Column(name = "cost_price", precision = 10, scale = 2)
+    private BigDecimal costPrice;
+    
     @NotBlank(message = "Category is required")
     @Size(max = 100, message = "Category must not exceed 100 characters")
     @Column(nullable = false)
@@ -61,6 +65,23 @@ public class Product {
         this.category = category;
     }
     
+    // Helper methods
+    public BigDecimal getMargin() {
+        if (costPrice != null && price != null && costPrice.compareTo(BigDecimal.ZERO) > 0) {
+            return price.subtract(costPrice);
+        }
+        return null;
+    }
+    
+    public BigDecimal getMarginPercentage() {
+        if (costPrice != null && price != null && costPrice.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal margin = price.subtract(costPrice);
+            return margin.divide(costPrice, 4, java.math.RoundingMode.HALF_UP)
+                         .multiply(new BigDecimal("100"));
+        }
+        return null;
+    }
+    
     // Getters and Setters
     public Long getId() {
         return id;
@@ -92,6 +113,14 @@ public class Product {
     
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+    
+    public BigDecimal getCostPrice() {
+        return costPrice;
+    }
+    
+    public void setCostPrice(BigDecimal costPrice) {
+        this.costPrice = costPrice;
     }
     
     public String getCategory() {

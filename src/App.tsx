@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, ShoppingBag, Eye, User, LogOut, Settings, Package, Key } from 'lucide-react';
+import { Search, Filter, ShoppingBag, Eye, User, LogOut, Settings, Package, Key, Phone, Info } from 'lucide-react';
 import LoginModal from './components/LoginModal';
 import AdminPanel from './components/AdminPanel';
 import ProductFilters from './components/ProductFilters';
 import ProductDetails from './components/ProductDetails';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import ResetPasswordModal from './components/ResetPasswordModal';
+import ContactUs from './components/ContactUs';
+import AboutUs from './components/AboutUs';
 
 interface ProductImage {
   id: number;
@@ -64,6 +66,7 @@ interface FilterValue {
 }
 
 function App() {
+  const [currentPage, setCurrentPage] = useState<'catalog' | 'contact' | 'about'>('catalog');
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -231,6 +234,15 @@ function App() {
     setSelectedProductId(productId);
   };
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-BH', {
+      style: 'currency',
+      currency: 'BHD',
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3
+    }).format(price);
+  };
+
   // Get the display image URL for a product with placeholder fallback
   const getProductImageUrl = (product: Product) => {
     // Priority: primaryImageUrl > placeholder
@@ -267,7 +279,7 @@ function App() {
       filter.filterValues.some(value => value.active)
     );
 
-  if (loading) {
+  if (loading && currentPage === 'catalog') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -288,6 +300,42 @@ function App() {
               <ShoppingBag className="h-8 w-8 text-blue-600" />
               <h1 className="text-2xl font-bold text-gray-900">Industrial Catalog</h1>
             </div>
+            
+            {/* Navigation */}
+            <nav className="hidden md:flex items-center space-x-8">
+              <button
+                onClick={() => setCurrentPage('catalog')}
+                className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+                  currentPage === 'catalog'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
+                }`}
+              >
+                Catalog
+              </button>
+              <button
+                onClick={() => setCurrentPage('about')}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-colors ${
+                  currentPage === 'about'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
+                }`}
+              >
+                <Info className="h-4 w-4" />
+                <span>About Us</span>
+              </button>
+              <button
+                onClick={() => setCurrentPage('contact')}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-colors ${
+                  currentPage === 'contact'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
+                }`}
+              >
+                <Phone className="h-4 w-4" />
+                <span>Contact Us</span>
+              </button>
+            </nav>
             
             <div className="flex items-center space-x-4">
               {user ? (
@@ -321,6 +369,7 @@ function App() {
                       {user.role === 'ROLE_ADMIN' && (
                         <button
                           onClick={() => {
+                            setCurrentPage('catalog');
                             setShowAdminPanel(!showAdminPanel);
                             setShowUserMenu(false);
                           }}
@@ -358,6 +407,44 @@ function App() {
               )}
             </div>
           </div>
+          
+          {/* Mobile Navigation */}
+          <div className="md:hidden border-t border-gray-200 py-2">
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setCurrentPage('catalog')}
+                className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+                  currentPage === 'catalog'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                Catalog
+              </button>
+              <button
+                onClick={() => setCurrentPage('about')}
+                className={`flex items-center space-x-1 px-3 py-2 rounded-lg font-medium transition-colors ${
+                  currentPage === 'about'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                <Info className="h-4 w-4" />
+                <span>About</span>
+              </button>
+              <button
+                onClick={() => setCurrentPage('contact')}
+                className={`flex items-center space-x-1 px-3 py-2 rounded-lg font-medium transition-colors ${
+                  currentPage === 'contact'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                <Phone className="h-4 w-4" />
+                <span>Contact</span>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -370,7 +457,12 @@ function App() {
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {showAdminPanel && user?.role === 'ROLE_ADMIN' && token ? (
+        {/* Page Content */}
+        {currentPage === 'contact' ? (
+          <ContactUs />
+        ) : currentPage === 'about' ? (
+          <AboutUs />
+        ) : showAdminPanel && user?.role === 'ROLE_ADMIN' && token ? (
           <AdminPanel token={token} />
         ) : (
           <>
@@ -523,24 +615,31 @@ function App() {
                             ))}
                           </div>
                           
-                          <div className="flex items-center justify-between">
-                            <span className="text-2xl font-bold text-gray-900">
-                              ${product.price}
-                            </span>
-                            <button 
-                              disabled={!product.inStock}
-                              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                                product.inStock
-                                  ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
-                                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Add to cart logic here
-                              }}
-                            >
-                              {product.inStock ? 'Add to Cart' : 'Unavailable'}
-                            </button>
+                          <div className="space-y-2">
+                            <div className="text-2xl font-bold text-gray-900">
+                              {formatPrice(product.price)}
+                            </div>
+                            <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                              For large orders, please contact us
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                product.inStock 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {product.inStock ? 'In Stock' : 'Out of Stock'}
+                              </span>
+                              <button 
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleProductClick(product.id);
+                                }}
+                              >
+                                View Details
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -597,6 +696,7 @@ function App() {
         <ProductDetails
           productId={selectedProductId}
           onClose={() => setSelectedProductId(null)}
+          formatPrice={formatPrice}
         />
       )}
     </div>

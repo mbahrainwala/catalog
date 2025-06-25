@@ -11,6 +11,7 @@ public class ProductDto {
     private String name;
     private String description;
     private BigDecimal price;
+    private BigDecimal costPrice; // Hidden field - only visible to admins
     private String category;
     private String primaryImageUrl; // Primary image URL from uploaded images
     private Boolean inStock;
@@ -18,6 +19,10 @@ public class ProductDto {
     private LocalDateTime updatedAt;
     private Map<String, List<String>> filterValues;
     private List<ProductImageDto> images; // Add images list
+    
+    // Calculated fields for admin use
+    private BigDecimal margin;
+    private BigDecimal marginPercentage;
     
     public ProductDto() {}
     
@@ -31,6 +36,15 @@ public class ProductDto {
         this.inStock = inStock;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+    }
+    
+    // Helper methods
+    public void calculateMargins() {
+        if (costPrice != null && price != null && costPrice.compareTo(BigDecimal.ZERO) > 0) {
+            this.margin = price.subtract(costPrice);
+            this.marginPercentage = margin.divide(costPrice, 4, java.math.RoundingMode.HALF_UP)
+                                          .multiply(new BigDecimal("100"));
+        }
     }
     
     // Getters and Setters
@@ -64,6 +78,14 @@ public class ProductDto {
     
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+    
+    public BigDecimal getCostPrice() {
+        return costPrice;
+    }
+    
+    public void setCostPrice(BigDecimal costPrice) {
+        this.costPrice = costPrice;
     }
     
     public String getCategory() {
@@ -120,5 +142,21 @@ public class ProductDto {
     
     public void setImages(List<ProductImageDto> images) {
         this.images = images;
+    }
+    
+    public BigDecimal getMargin() {
+        return margin;
+    }
+    
+    public void setMargin(BigDecimal margin) {
+        this.margin = margin;
+    }
+    
+    public BigDecimal getMarginPercentage() {
+        return marginPercentage;
+    }
+    
+    public void setMarginPercentage(BigDecimal marginPercentage) {
+        this.marginPercentage = marginPercentage;
     }
 }

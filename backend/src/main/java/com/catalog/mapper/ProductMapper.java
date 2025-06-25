@@ -9,6 +9,8 @@ import com.catalog.service.ProductImageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -31,9 +33,16 @@ public class ProductMapper {
     private ProductImageMapper productImageMapper;
     
     public ProductDto toDto(Product product) {
+        return toDto(product, false);
+    }
+    
+    public ProductDto toDto(Product product, boolean includeAdminFields) {
         if (product == null) {
             return null;
         }
+        
+        // Check if current user is admin
+        boolean isAdmin = includeAdminFields || isCurrentUserAdmin();
         
         ProductDto dto = new ProductDto(
             product.getId(),
@@ -45,6 +54,12 @@ public class ProductMapper {
             product.getCreatedAt(),
             product.getUpdatedAt()
         );
+        
+        // Only include cost price and margins for admin users
+        if (isAdmin && product.getCostPrice() != null) {
+            dto.setCostPrice(product.getCostPrice());
+            dto.calculateMargins();
+        }
         
         // Add filter values if product has an ID (i.e., it's persisted)
         if (product.getId() != null) {
@@ -79,6 +94,10 @@ public class ProductMapper {
         return dto;
     }
     
+    public ProductDto toDtoForAdmin(Product product) {
+        return toDto(product, true);
+    }
+    
     public Product toEntity(ProductDto productDto) {
         if (productDto == null) {
             return null;
@@ -89,6 +108,7 @@ public class ProductMapper {
         product.setName(productDto.getName());
         product.setDescription(productDto.getDescription());
         product.setPrice(productDto.getPrice());
+        product.setCostPrice(productDto.getCostPrice());
         product.setCategory(productDto.getCategory());
         product.setInStock(productDto.getInStock());
         product.setCreatedAt(productDto.getCreatedAt());
@@ -98,13 +118,21 @@ public class ProductMapper {
     }
     
     public List<ProductDto> toDtoList(List<Product> products) {
+        return toDtoList(products, false);
+    }
+    
+    public List<ProductDto> toDtoList(List<Product> products, boolean includeAdminFields) {
         if (products == null) {
             return null;
         }
         
         return products.stream()
-                .map(this::toDto)
+                .map(product -> toDto(product, includeAdminFields))
                 .collect(Collectors.toList());
+    }
+    
+    public List<ProductDto> toDtoListForAdmin(List<Product> products) {
+        return toDtoList(products, true);
     }
     
     public List<Product> toEntityList(List<ProductDto> productDtos) {
@@ -115,5 +143,18 @@ public class ProductMapper {
         return productDtos.stream()
                 .map(this::toEntity)
                 .collect(Collectors.toList());
+    }
+    
+    private boolean isCurrentUserAdmin() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated()) {
+                return authentication.getAuthorities().stream()
+                        .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+            }
+        } catch (Exception e) {
+            logger.debug("Error checking admin status", e);
+        }
+        return false;
     }
 }

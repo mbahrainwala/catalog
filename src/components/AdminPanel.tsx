@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, Package, Tags, Filter as FilterIcon, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Package, Tags, Filter as FilterIcon, Image as ImageIcon, DollarSign, TrendingUp } from 'lucide-react';
 import CategoryManager from './CategoryManager';
 import FilterManager from './FilterManager';
 import ImageUpload from './ImageUpload';
@@ -9,10 +9,13 @@ interface Product {
   name: string;
   description: string;
   price: number;
+  costPrice?: number;
   category: string;
   inStock: boolean;
   primaryImageUrl?: string;
   filterValues?: Record<string, string[]>;
+  margin?: number;
+  marginPercentage?: number;
 }
 
 interface ProductImage {
@@ -70,6 +73,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
     name: '',
     description: '',
     price: 0,
+    costPrice: 0,
     category: '',
     inStock: true,
     filterValues: {}
@@ -265,6 +269,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
     return placeholders[category.toLowerCase()] || placeholders['default'];
   };
 
+  const formatCurrency = (amount: number | undefined) => {
+    if (amount === undefined || amount === null) return 'N/A';
+    return new Intl.NumberFormat('en-BH', {
+      style: 'currency',
+      currency: 'BHD',
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3
+    }).format(amount);
+  };
+
+  const formatPercentage = (percentage: number | undefined) => {
+    if (percentage === undefined || percentage === null) return 'N/A';
+    return `${percentage.toFixed(1)}%`;
+  };
+
   const ProductForm: React.FC<{ product: Product; onSave: (product: Product) => void; onCancel: () => void }> = ({
     product,
     onSave,
@@ -392,20 +411,59 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Price ($)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Selling Price (BHD)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      required
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cost Price (BHD)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      value={formData.costPrice || ''}
+                      onChange={(e) => setFormData({ ...formData, costPrice: e.target.value ? parseFloat(e.target.value) : undefined })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Internal cost"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Hidden from customers</p>
+                  </div>
                 </div>
+
+                {/* Margin Calculation Display */}
+                {formData.price && formData.costPrice && formData.costPrice > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <h5 className="text-sm font-medium text-green-900 mb-2">Profit Analysis</h5>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-green-700">Margin:</span>
+                        <span className="font-medium text-green-900 ml-2">
+                          {formatCurrency(formData.price - formData.costPrice)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-green-700">Margin %:</span>
+                        <span className="font-medium text-green-900 ml-2">
+                          {formatPercentage(((formData.price - formData.costPrice) / formData.costPrice) * 100)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -615,7 +673,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                       Category
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Price
+                      Pricing
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Margin
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Stock
@@ -654,7 +715,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${product.price}
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-1">
+                            <DollarSign className="h-3 w-3 text-green-600" />
+                            <span className="font-medium">{formatCurrency(product.price)}</span>
+                          </div>
+                          {product.costPrice && (
+                            <div className="text-xs text-gray-500">
+                              Cost: {formatCurrency(product.costPrice)}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {product.margin && product.marginPercentage ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-1">
+                              <TrendingUp className="h-3 w-3 text-blue-600" />
+                              <span className="font-medium text-blue-900">{formatCurrency(product.margin)}</span>
+                            </div>
+                            <div className="text-xs text-blue-600">
+                              {formatPercentage(product.marginPercentage)}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">No cost data</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${

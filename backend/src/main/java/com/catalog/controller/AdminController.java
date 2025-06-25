@@ -62,12 +62,12 @@ public class AdminController {
     @Autowired
     private FilterMapper filterMapper;
     
-    // Product Management - Return DTOs
+    // Product Management - Return DTOs with admin fields
     @GetMapping("/products")
     public ResponseEntity<List<ProductDto>> getAllProducts() {
         try {
             List<Product> products = productService.getAllProducts();
-            List<ProductDto> productDtos = productMapper.toDtoList(products);
+            List<ProductDto> productDtos = productMapper.toDtoListForAdmin(products);
             return ResponseEntity.ok(productDtos);
         } catch (Exception e) {
             logger.error("Error in getAllProducts", e);
@@ -79,7 +79,7 @@ public class AdminController {
     public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
         try {
             Optional<Product> product = productService.getProductById(id);
-            return product.map(p -> ResponseEntity.ok(productMapper.toDto(p)))
+            return product.map(p -> ResponseEntity.ok(productMapper.toDtoForAdmin(p)))
                          .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
             logger.error("Error in getProductById for id: {}", id, e);
@@ -98,8 +98,12 @@ public class AdminController {
             product.setDescription((String) productData.get("description"));
             product.setPrice(new java.math.BigDecimal(productData.get("price").toString()));
             product.setCategory((String) productData.get("category"));
-            
             product.setInStock((Boolean) productData.get("inStock"));
+            
+            // Handle cost price if provided
+            if (productData.get("costPrice") != null) {
+                product.setCostPrice(new java.math.BigDecimal(productData.get("costPrice").toString()));
+            }
             
             // Save product first
             Product savedProduct = productService.saveProduct(product);
@@ -113,7 +117,7 @@ public class AdminController {
                 productFilterService.updateProductFilters(savedProduct, filterData);
             }
             
-            ProductDto productDto = productMapper.toDto(savedProduct);
+            ProductDto productDto = productMapper.toDtoForAdmin(savedProduct);
             
             logger.info("Product created successfully");
             return ResponseEntity.status(HttpStatus.CREATED).body(productDto);
@@ -143,8 +147,12 @@ public class AdminController {
             product.setDescription((String) productData.get("description"));
             product.setPrice(new java.math.BigDecimal(productData.get("price").toString()));
             product.setCategory((String) productData.get("category"));
-            
             product.setInStock((Boolean) productData.get("inStock"));
+            
+            // Handle cost price if provided
+            if (productData.get("costPrice") != null) {
+                product.setCostPrice(new java.math.BigDecimal(productData.get("costPrice").toString()));
+            }
             
             // Update product
             Product updatedProduct = productService.updateProduct(id, product);
@@ -157,7 +165,7 @@ public class AdminController {
                 productFilterService.updateProductFilters(updatedProduct, filterData);
             }
             
-            ProductDto productDto = productMapper.toDto(updatedProduct);
+            ProductDto productDto = productMapper.toDtoForAdmin(updatedProduct);
             
             logger.info("Product updated successfully");
             return ResponseEntity.ok(productDto);
