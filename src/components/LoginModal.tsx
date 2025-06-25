@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, Lock, Mail, UserPlus } from 'lucide-react';
+import { X, Mail, Lock, UserPlus } from 'lucide-react';
 import ForgotPasswordModal from './ForgotPasswordModal';
 import AccountActivationModal from './AccountActivationModal';
 
@@ -10,12 +10,11 @@ interface LoginModalProps {
 }
 
 interface LoginForm {
-  username: string;
+  email: string;
   password: string;
 }
 
 interface SignupForm {
-  username: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -25,17 +24,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
   const [isSignup, setIsSignup] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showAccountActivation, setShowAccountActivation] = useState(false);
-  const [activationUsername, setActivationUsername] = useState('');
+  const [activationEmail, setActivationEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
   const [loginForm, setLoginForm] = useState<LoginForm>({
-    username: '',
+    email: '',
     password: ''
   });
   
   const [signupForm, setSignupForm] = useState<SignupForm>({
-    username: '',
     email: '',
     firstName: '',
     lastName: ''
@@ -61,10 +59,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
         localStorage.setItem('token', data.token);
         onLogin(data.token, data);
         onClose();
-        setLoginForm({ username: '', password: '' });
+        setLoginForm({ email: '', password: '' });
       } else if (response.status === 202 && data.needsActivation) {
         // Account needs activation
-        setActivationUsername(data.username);
+        setActivationEmail(data.email);
         setShowAccountActivation(true);
         setError('');
       } else {
@@ -96,7 +94,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
       if (response.ok) {
         setIsSignup(false);
         setSignupForm({
-          username: '',
           email: '',
           firstName: '',
           lastName: ''
@@ -124,7 +121,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
 
   const handleAccountActivated = () => {
     setShowAccountActivation(false);
-    setActivationUsername('');
+    setActivationEmail('');
     alert('Account activated successfully! You can now log in with your new password.');
   };
 
@@ -184,23 +181,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Username
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                    <input
-                      type="text"
-                      required
-                      value={signupForm.username}
-                      onChange={(e) => setSignupForm({ ...signupForm, username: e.target.value })}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
+                    Email Address
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
@@ -210,6 +191,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
                       value={signupForm.email}
                       onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
                       className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="your.email@example.com"
                     />
                   </div>
                 </div>
@@ -238,17 +220,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Username
+                    Email Address
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                     <input
-                      type="text"
+                      type="email"
                       required
-                      value={loginForm.username}
-                      onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                      value={loginForm.email}
+                      onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
                       className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter your username"
+                      placeholder="Enter your email address"
                     />
                   </div>
                 </div>
@@ -320,7 +302,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
         onClose={() => setShowAccountActivation(false)}
         onBackToLogin={handleBackToLogin}
         onAccountActivated={handleAccountActivated}
-        username={activationUsername}
+        email={activationEmail}
       />
     </>
   );

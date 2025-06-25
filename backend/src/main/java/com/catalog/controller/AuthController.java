@@ -60,7 +60,7 @@ public class AuthController {
         
         try {
             // Check if user exists and needs activation
-            Optional<User> userOpt = userRepository.findByUsername(loginRequest.getUsername());
+            Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
             if (userOpt.isPresent()) {
                 User user = userOpt.get();
                 
@@ -75,14 +75,14 @@ public class AuthController {
                         // Account needs activation
                         response.put("message", "Account requires activation. Please check your email for activation instructions.");
                         response.put("needsActivation", true);
-                        response.put("username", loginRequest.getUsername());
+                        response.put("email", loginRequest.getEmail());
                         return ResponseEntity.status(202).body(response); // 202 Accepted
                     }
                 }
             }
             
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
             
             SecurityContextHolder.getContext().setAuthentication(authentication);
             String jwt = jwtUtils.generateJwtToken(authentication);
@@ -91,15 +91,14 @@ public class AuthController {
             
             return ResponseEntity.ok(new JwtResponse(jwt,
                     userDetails.getId(),
-                    userDetails.getUsername(),
                     userDetails.getEmail(),
                     userDetails.getFirstName(),
                     userDetails.getLastName(),
                     userDetails.getAuthorities().iterator().next().getAuthority()));
                     
         } catch (Exception e) {
-            logger.error("Authentication failed for user: {}", loginRequest.getUsername(), e);
-            response.put("message", "Invalid username or password");
+            logger.error("Authentication failed for user: {}", loginRequest.getEmail(), e);
+            response.put("message", "Invalid email or password");
             return ResponseEntity.badRequest().body(response);
         }
     }
@@ -109,11 +108,6 @@ public class AuthController {
         Map<String, String> response = new HashMap<>();
         
         try {
-            if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-                response.put("message", "Error: Username is already taken!");
-                return ResponseEntity.badRequest().body(response);
-            }
-            
             if (userRepository.existsByEmail(signUpRequest.getEmail())) {
                 response.put("message", "Error: Email is already in use!");
                 return ResponseEntity.badRequest().body(response);
@@ -121,7 +115,6 @@ public class AuthController {
             
             // Create user with temporary password
             userActivationService.createUserWithTemporaryPassword(
-                signUpRequest.getUsername(),
                 signUpRequest.getEmail(),
                 signUpRequest.getFirstName(),
                 signUpRequest.getLastName()
@@ -149,7 +142,7 @@ public class AuthController {
             }
             
             boolean success = userActivationService.activateAccount(
-                activateRequest.getUsername(),
+                activateRequest.getEmail(),
                 activateRequest.getTemporaryPassword(),
                 activateRequest.getNewPassword()
             );
@@ -181,7 +174,6 @@ public class AuthController {
             UserPrincipal userDetails = (UserPrincipal) authentication.getPrincipal();
             return ResponseEntity.ok(new JwtResponse("",
                     userDetails.getId(),
-                    userDetails.getUsername(),
                     userDetails.getEmail(),
                     userDetails.getFirstName(),
                     userDetails.getLastName(),
@@ -235,7 +227,7 @@ public class AuthController {
             user.setIsTemporaryPassword(false);
             userRepository.save(user);
             
-            logger.info("Password changed successfully for user: {}", user.getUsername());
+            logger.info("Password changed successfully for user: {}", user.getEmail());
             
             response.put("message", "Password changed successfully");
             return ResponseEntity.ok(response);

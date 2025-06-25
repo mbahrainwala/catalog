@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 public class UserDto {
     
     private Long id;
-    private String username;
     private String email;
     private String firstName;
     private String lastName;
@@ -16,10 +15,9 @@ public class UserDto {
     
     public UserDto() {}
     
-    public UserDto(Long id, String username, String email, String firstName, String lastName,
+    public UserDto(Long id, String email, String firstName, String lastName,
                    String role, Boolean enabled, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
-        this.username = username;
         this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -36,14 +34,6 @@ public class UserDto {
     
     public void setId(Long id) {
         this.id = id;
-    }
-    
-    public String getUsername() {
-        return username;
-    }
-    
-    public void setUsername(String username) {
-        this.username = username;
     }
     
     public String getEmail() {

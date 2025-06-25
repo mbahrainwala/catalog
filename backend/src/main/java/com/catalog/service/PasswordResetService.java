@@ -66,7 +66,7 @@ public class PasswordResetService {
             long recentAttempts = tokenRepository.countByUserAndCreatedAtAfter(user, oneHourAgo);
             
             if (recentAttempts >= maxAttemptsPerHour) {
-                logger.warn("Too many password reset attempts for user: {} ({})", user.getUsername(), email);
+                logger.warn("Too many password reset attempts for user: {} ({})", user.getEmail(), email);
                 throw new RuntimeException("Too many password reset attempts. Please try again later.");
             }
             
@@ -84,7 +84,7 @@ public class PasswordResetService {
             String resetLink = baseUrl + "/reset-password?token=" + token;
             sendPasswordResetEmailAsync(user.getEmail(), user.getFirstName(), resetLink);
             
-            logger.info("Password reset token created for user: {}", user.getUsername());
+            logger.info("Password reset token created for user: {}", user.getEmail());
             return true;
             
         } catch (Exception e) {
@@ -121,7 +121,7 @@ public class PasswordResetService {
             // Send confirmation email asynchronously
             sendPasswordResetConfirmationAsync(user.getEmail(), user.getFirstName());
             
-            logger.info("Password reset successful for user: {}", user.getUsername());
+            logger.info("Password reset successful for user: {}", user.getEmail());
             return true;
             
         } catch (Exception e) {

@@ -36,15 +36,15 @@ public class UserActivationService {
     private final SecureRandom secureRandom = new SecureRandom();
     
     @Transactional
-    public User createUserWithTemporaryPassword(String username, String email, String firstName, String lastName) {
+    public User createUserWithTemporaryPassword(String email, String firstName, String lastName) {
         try {
-            logger.info("Creating user with temporary password: {}", username);
+            logger.info("Creating user with temporary password: {}", email);
             
             // Generate temporary password
             String temporaryPassword = generateTemporaryPassword();
             
             // Create user
-            User user = new User(username, email, passwordEncoder.encode(temporaryPassword), firstName, lastName);
+            User user = new User(email, passwordEncoder.encode(temporaryPassword), firstName, lastName);
             user.setRole(User.Role.USER);
             user.setIsTemporaryPassword(true);
             user.setAccountActivated(false);
@@ -53,23 +53,23 @@ public class UserActivationService {
             User savedUser = userRepository.save(user);
             
             // Send activation email asynchronously
-            sendActivationEmailAsync(email, firstName, username, temporaryPassword);
+            sendActivationEmailAsync(email, firstName, email, temporaryPassword);
             
-            logger.info("User created with temporary password: {}", username);
+            logger.info("User created with temporary password: {}", email);
             return savedUser;
             
         } catch (Exception e) {
-            logger.error("Error creating user with temporary password: {}", username, e);
+            logger.error("Error creating user with temporary password: {}", email, e);
             throw new RuntimeException("Failed to create user account: " + e.getMessage());
         }
     }
     
     @Transactional
-    public boolean activateAccount(String username, String temporaryPassword, String newPassword) {
+    public boolean activateAccount(String email, String temporaryPassword, String newPassword) {
         try {
-            logger.info("Attempting to activate account for user: {}", username);
+            logger.info("Attempting to activate account for user: {}", email);
             
-            User user = userRepository.findByUsername(username)
+            User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
             
             // Check if account needs activation
@@ -79,7 +79,7 @@ public class UserActivationService {
             
             // Check if activation deadline has passed
             if (user.isActivationExpired()) {
-                logger.warn("Activation deadline expired for user: {}", username);
+                logger.warn("Activation deadline expired for user: {}", email);
                 // Delete expired user account
                 userRepository.delete(user);
                 throw new RuntimeException("Activation deadline has expired. Please create a new account.");
@@ -101,19 +101,19 @@ public class UserActivationService {
             // Send confirmation email
             sendAccountActivatedEmailAsync(user.getEmail(), user.getFirstName());
             
-            logger.info("Account activated successfully for user: {}", username);
+            logger.info("Account activated successfully for user: {}", email);
             return true;
             
         } catch (Exception e) {
-            logger.error("Error activating account for user: {}", username, e);
+            logger.error("Error activating account for user: {}", email, e);
             throw new RuntimeException("Failed to activate account: " + e.getMessage());
         }
     }
     
     @Async
-    public void sendActivationEmailAsync(String email, String firstName, String username, String temporaryPassword) {
+    public void sendActivationEmailAsync(String email, String firstName, String emailAddress, String temporaryPassword) {
         try {
-            emailService.sendAccountActivationEmail(email, firstName, username, temporaryPassword);
+            emailService.sendAccountActivationEmail(email, firstName, emailAddress, temporaryPassword);
         } catch (Exception e) {
             logger.error("Failed to send activation email to: {}", email, e);
         }
@@ -154,7 +154,7 @@ public class UserActivationService {
                 logger.info("Found {} expired unactivated accounts to delete", expiredUsers.size());
                 
                 for (User user : expiredUsers) {
-                    logger.info("Deleting expired unactivated account: {} ({})", user.getUsername(), user.getEmail());
+                    logger.info("Deleting expired unactivated account: {} ({})", user.getEmail(), user.getEmail());
                     userRepository.delete(user);
                 }
                 

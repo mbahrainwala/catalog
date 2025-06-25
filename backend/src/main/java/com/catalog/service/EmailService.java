@@ -29,7 +29,7 @@ public class EmailService {
     @Value("${catalog.app.base-url}")
     private String baseUrl;
     
-    public void sendAccountActivationEmail(String toEmail, String firstName, String username, String temporaryPassword) {
+    public void sendAccountActivationEmail(String toEmail, String firstName, String email, String temporaryPassword) {
         try {
             logger.info("Sending account activation email to: {}", toEmail);
             
@@ -41,7 +41,7 @@ public class EmailService {
             helper.setSubject("Account Created - Activate Your Industrial Catalog Account");
             
             // Create email content
-            String htmlContent = createAccountActivationEmailContent(firstName, username, temporaryPassword);
+            String htmlContent = createAccountActivationEmailContent(firstName, email, temporaryPassword);
             helper.setText(htmlContent, true);
             
             mailSender.send(message);
@@ -83,7 +83,7 @@ public class EmailService {
         }
     }
     
-    private String createAccountActivationEmailContent(String firstName, String username, String temporaryPassword) {
+    private String createAccountActivationEmailContent(String firstName, String email, String temporaryPassword) {
         return """
             <!DOCTYPE html>
             <html>
@@ -278,7 +278,7 @@ public class EmailService {
                         <div class="credentials-box">
                             <div class="credentials-title">🔐 Your Login Credentials</div>
                             <div class="credential-item">
-                                <div class="credential-label">Username:</div>
+                                <div class="credential-label">Email:</div>
                                 <div class="credential-value">%s</div>
                             </div>
                             <div class="credential-item">
@@ -294,7 +294,7 @@ public class EmailService {
                         <div class="steps">
                             <div class="steps-title">📋 How to Activate Your Account:</div>
                             <div class="step">Click the "Activate Your Account" button above</div>
-                            <div class="step">Log in using your username and temporary password</div>
+                            <div class="step">Log in using your email and temporary password</div>
                             <div class="step">Create a new secure password</div>
                             <div class="step">Start exploring our industrial equipment catalog!</div>
                         </div>
@@ -320,7 +320,7 @@ public class EmailService {
                 </div>
             </body>
             </html>
-            """.formatted(firstName, username, temporaryPassword, baseUrl);
+            """.formatted(firstName, email, temporaryPassword, baseUrl);
     }
     
     private String createAccountActivatedEmailContent(String firstName) {

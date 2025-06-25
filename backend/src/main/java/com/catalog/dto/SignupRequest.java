@@ -4,10 +4,6 @@ import jakarta.validation.constraints.*;
 
 public class SignupRequest {
     
-    @NotBlank(message = "Username is required")
-    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
-    private String username;
-    
     @NotBlank(message = "Email is required")
     @Email(message = "Email should be valid")
     private String email;
@@ -22,19 +18,10 @@ public class SignupRequest {
     
     public SignupRequest() {}
     
-    public SignupRequest(String username, String email, String firstName, String lastName) {
-        this.username = username;
+    public SignupRequest(String email, String firstName, String lastName) {
         this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;
-    }
-    
-    public String getUsername() {
-        return username;
-    }
-    
-    public void setUsername(String username) {
-        this.username = username;
     }
     
     public String getEmail() {

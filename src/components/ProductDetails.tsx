@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Package, Phone, Mail } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Package, Phone, Mail, Share2, Copy, Check } from 'lucide-react';
 
 interface ProductImage {
   id: number;
@@ -34,6 +34,8 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose, for
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
     fetchProduct();
@@ -117,6 +119,44 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose, for
     setSelectedImageIndex(prev => prev < images.length - 1 ? prev + 1 : 0);
   };
 
+  const generateShareableLink = () => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}?product=${productId}`;
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      const shareableLink = generateShareableLink();
+      await navigator.clipboard.writeText(shareableLink);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = generateShareableLink();
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
+  };
+
+  const shareViaEmail = () => {
+    const shareableLink = generateShareableLink();
+    const subject = encodeURIComponent(`Check out this product: ${product?.name}`);
+    const body = encodeURIComponent(`I thought you might be interested in this product:\n\n${product?.name}\n${formatPrice(product?.price || 0)}\n\n${shareableLink}`);
+    window.open(`mailto:?subject=${subject}&body=${body}`);
+  };
+
+  const shareViaWhatsApp = () => {
+    const shareableLink = generateShareableLink();
+    const text = encodeURIComponent(`Check out this product: ${product?.name}\n${formatPrice(product?.price || 0)}\n\n${shareableLink}`);
+    window.open(`https://wa.me/?text=${text}`);
+  };
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -160,13 +200,77 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose, for
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
           <h2 className="text-2xl font-bold text-gray-900">Product Details</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="h-6 w-6 text-gray-500" />
-          </button>
+          <div className="flex items-center space-x-2">
+            {/* Share Button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowShareMenu(!showShareMenu)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center space-x-2 text-gray-600 hover:text-blue-600"
+              >
+                <Share2 className="h-5 w-5" />
+                <span className="text-sm font-medium">Share</span>
+              </button>
+              
+              {showShareMenu && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">Share this product</p>
+                  </div>
+                  
+                  <button
+                    onClick={copyToClipboard}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-3"
+                  >
+                    {copySuccess ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                    <span>{copySuccess ? 'Copied!' : 'Copy link'}</span>
+                  </button>
+                  
+                  <button
+                    onClick={shareViaEmail}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-3"
+                  >
+                    <Mail className="h-4 w-4" />
+                    <span>Share via Email</span>
+                  </button>
+                  
+                  <button
+                    onClick={shareViaWhatsApp}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-3"
+                  >
+                    <Phone className="h-4 w-4" />
+                    <span>Share via WhatsApp</span>
+                  </button>
+                  
+                  <div className="px-4 py-2 border-t border-gray-100">
+                    <p className="text-xs text-gray-500">Share link:</p>
+                    <p className="text-xs text-gray-600 break-all bg-gray-50 p-2 rounded mt-1">
+                      {generateShareableLink()}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X className="h-6 w-6 text-gray-500" />
+            </button>
+          </div>
         </div>
+
+        {/* Click outside to close share menu */}
+        {showShareMenu && (
+          <div 
+            className="fixed inset-0 z-10" 
+            onClick={() => setShowShareMenu(false)}
+          />
+        )}
 
         <div className="p-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -318,7 +422,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose, for
                     <span>Call Now</span>
                   </a>
                   <a
-                    href="mailto:sales@industrialcatalog.bh?subject=Inquiry about ${product.name}"
+                    href={`mailto:sales@industrialcatalog.bh?subject=Inquiry about ${product.name}`}
                     className="flex items-center justify-center space-x-2 bg-white text-blue-600 border border-blue-600 px-4 py-3 rounded-lg hover:bg-blue-50 transition-colors"
                   >
                     <Mail className="h-4 w-4" />

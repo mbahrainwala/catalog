@@ -13,17 +13,13 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     
-    Optional<User> findByUsername(String username);
-    
     Optional<User> findByEmail(String email);
-    
-    Boolean existsByUsername(String username);
     
     Boolean existsByEmail(String email);
     
     @Query("SELECT u FROM User u WHERE u.accountActivated = false AND u.isTemporaryPassword = true AND u.activationDeadline < :now")
     List<User> findExpiredUnactivatedUsers(@Param("now") LocalDateTime now);
     
-    @Query("SELECT u FROM User u WHERE u.username = :username AND u.accountActivated = false AND u.isTemporaryPassword = true")
-    Optional<User> findUnactivatedUserByUsername(@Param("username") String username);
+    @Query("SELECT u FROM User u WHERE u.email = :email AND u.accountActivated = false AND u.isTemporaryPassword = true")
+    Optional<User> findUnactivatedUserByEmail(@Param("email") String email);
 }

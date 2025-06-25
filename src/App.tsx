@@ -32,7 +32,6 @@ interface Product {
 
 interface User {
   id: number;
-  username: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -102,6 +101,17 @@ function App() {
       setShowResetPasswordModal(true);
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    // Check for shared product in URL
+    const productIdParam = urlParams.get('product');
+    if (productIdParam) {
+      const productId = parseInt(productIdParam, 10);
+      if (!isNaN(productId)) {
+        setSelectedProductId(productId);
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     }
     
     fetchProducts();

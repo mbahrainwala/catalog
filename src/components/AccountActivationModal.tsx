@@ -6,7 +6,7 @@ interface AccountActivationModalProps {
   onClose: () => void;
   onBackToLogin: () => void;
   onAccountActivated: () => void;
-  username: string;
+  email: string;
 }
 
 interface ActivationForm {
@@ -20,7 +20,7 @@ const AccountActivationModal: React.FC<AccountActivationModalProps> = ({
   onClose, 
   onBackToLogin, 
   onAccountActivated,
-  username 
+  email 
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -82,7 +82,7 @@ const AccountActivationModal: React.FC<AccountActivationModalProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username,
+          email,
           temporaryPassword: formData.temporaryPassword,
           newPassword: formData.newPassword,
           confirmPassword: formData.confirmPassword
@@ -203,7 +203,7 @@ const AccountActivationModal: React.FC<AccountActivationModalProps> = ({
                   Activate Your Account
                 </h3>
                 <p className="text-gray-600 text-sm">
-                  Username: <span className="font-medium">{username}</span>
+                  Email: <span className="font-medium">{email}</span>
                 </p>
                 <p className="text-gray-600 text-sm mt-1">
                   Enter your temporary password and create a new secure password.
