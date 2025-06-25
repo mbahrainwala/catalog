@@ -27,77 +27,109 @@ public class ProductFilterService {
     private FilterValueRepository filterValueRepository;
     
     public List<ProductFilter> getProductFilters(Long productId) {
-        return productFilterRepository.findByProductId(productId);
+        try {
+            return productFilterRepository.findByProductId(productId);
+        } catch (Exception e) {
+            System.err.println("Error fetching product filters for product " + productId + ": " + e.getMessage());
+            return Collections.emptyList();
+        }
     }
     
     @Transactional
     public void updateProductFilters(Product product, Map<String, List<String>> filterData) {
-        // Remove existing filters for this product
-        productFilterRepository.deleteByProductId(product.getId());
-        
-        // Add new filters
-        for (Map.Entry<String, List<String>> entry : filterData.entrySet()) {
-            String filterName = entry.getKey();
-            List<String> values = entry.getValue();
+        try {
+            System.out.println("Updating filters for product " + product.getId() + " with data: " + filterData);
             
-            Optional<Filter> filterOpt = filterRepository.findByName(filterName);
-            if (filterOpt.isPresent()) {
-                Filter filter = filterOpt.get();
+            // Remove existing filters for this product
+            productFilterRepository.deleteByProductId(product.getId());
+            
+            // Add new filters
+            for (Map.Entry<String, List<String>> entry : filterData.entrySet()) {
+                String filterName = entry.getKey();
+                List<String> values = entry.getValue();
                 
-                for (String value : values) {
-                    Optional<FilterValue> filterValueOpt = filterValueRepository.findByFilterIdAndValue(filter.getId(), value);
-                    if (filterValueOpt.isPresent()) {
-                        ProductFilter productFilter = new ProductFilter(product, filter, filterValueOpt.get());
-                        productFilterRepository.save(productFilter);
+                Optional<Filter> filterOpt = filterRepository.findByName(filterName);
+                if (filterOpt.isPresent()) {
+                    Filter filter = filterOpt.get();
+                    
+                    for (String value : values) {
+                        Optional<FilterValue> filterValueOpt = filterValueRepository.findByFilterIdAndValue(filter.getId(), value);
+                        if (filterValueOpt.isPresent()) {
+                            ProductFilter productFilter = new ProductFilter(product, filter, filterValueOpt.get());
+                            productFilterRepository.save(productFilter);
+                        } else {
+                            System.err.println("Filter value not found: " + filterName + " = " + value);
+                        }
                     }
+                } else {
+                    System.err.println("Filter not found: " + filterName);
                 }
             }
+            
+            System.out.println("Product filters updated successfully");
+            
+        } catch (Exception e) {
+            System.err.println("Error updating product filters: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
         }
     }
     
     public Map<String, List<String>> getProductFilterValues(Long productId) {
-        List<ProductFilter> productFilters = productFilterRepository.findByProductId(productId);
-        
-        return productFilters.stream()
-                .collect(Collectors.groupingBy(
-                    pf -> pf.getFilter().getName(),
-                    Collectors.mapping(
-                        pf -> pf.getFilterValue().getValue(),
-                        Collectors.toList()
-                    )
-                ));
+        try {
+            List<ProductFilter> productFilters = productFilterRepository.findByProductId(productId);
+            
+            return productFilters.stream()
+                    .collect(Collectors.groupingBy(
+                        pf -> pf.getFilter().getName(),
+                        Collectors.mapping(
+                            pf -> pf.getFilterValue().getValue(),
+                            Collectors.toList()
+                        )
+                    ));
+        } catch (Exception e) {
+            System.err.println("Error fetching product filter values for product " + productId + ": " + e.getMessage());
+            return Collections.emptyMap();
+        }
     }
     
     public List<Long> findProductIdsByFilters(Map<String, List<String>> filters) {
-        if (filters.isEmpty()) {
-            return Collections.emptyList();
-        }
-        
-        // Get all product IDs that match each filter
-        List<Set<Long>> filterResults = new ArrayList<>();
-        
-        for (Map.Entry<String, List<String>> entry : filters.entrySet()) {
-            String filterName = entry.getKey();
-            List<String> values = entry.getValue();
-            
-            Optional<Filter> filterOpt = filterRepository.findByName(filterName);
-            if (filterOpt.isPresent()) {
-                List<Long> productIds = productFilterRepository.findProductIdsByFilterAndValues(
-                    filterOpt.get().getId(), values);
-                filterResults.add(new HashSet<>(productIds));
+        try {
+            if (filters.isEmpty()) {
+                return Collections.emptyList();
             }
-        }
-        
-        // Find intersection of all filter results (products that match ALL filters)
-        if (filterResults.isEmpty()) {
+            
+            // Get all product IDs that match each filter
+            List<Set<Long>> filterResults = new ArrayList<>();
+            
+            for (Map.Entry<String, List<String>> entry : filters.entrySet()) {
+                String filterName = entry.getKey();
+                List<String> values = entry.getValue();
+                
+                Optional<Filter> filterOpt = filterRepository.findByName(filterName);
+                if (filterOpt.isPresent()) {
+                    List<Long> productIds = productFilterRepository.findProductIdsByFilterAndValues(
+                        filterOpt.get().getId(), values);
+                    filterResults.add(new HashSet<>(productIds));
+                }
+            }
+            
+            // Find intersection of all filter results (products that match ALL filters)
+            if (filterResults.isEmpty()) {
+                return Collections.emptyList();
+            }
+            
+            Set<Long> result = new HashSet<>(filterResults.get(0));
+            for (int i = 1; i < filterResults.size(); i++) {
+                result.retainAll(filterResults.get(i));
+            }
+            
+            return new ArrayList<>(result);
+            
+        } catch (Exception e) {
+            System.err.println("Error finding products by filters: " + e.getMessage());
+            e.printStackTrace();
             return Collections.emptyList();
         }
-        
-        Set<Long> result = new HashSet<>(filterResults.get(0));
-        for (int i = 1; i < filterResults.size(); i++) {
-            result.retainAll(filterResults.get(i));
-        }
-        
-        return new ArrayList<>(result);
     }
 }

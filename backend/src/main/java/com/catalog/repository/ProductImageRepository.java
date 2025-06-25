@@ -32,4 +32,7 @@ public interface ProductImageRepository extends JpaRepository<ProductImage, Long
     void deleteByProductId(@Param("productId") Long productId);
     
     long countByProductId(Long productId);
+    
+    // Add method to force flush changes to database
+    void flush();
 }

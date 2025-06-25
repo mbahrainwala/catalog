@@ -34,7 +34,6 @@ public class ProductService {
             product.setDescription(productDetails.getDescription());
             product.setPrice(productDetails.getPrice());
             product.setCategory(productDetails.getCategory());
-            product.setImageUrl(productDetails.getImageUrl());
             product.setRating(productDetails.getRating());
             product.setInStock(productDetails.getInStock());
             return productRepository.save(product);
@@ -80,19 +79,5 @@ public class ProductService {
     
     public List<Product> getProductsSortedByPriceDesc() {
         return productRepository.findByOrderByPriceDesc();
-    }
-    
-    // Method to get product with images loaded
-    public Optional<Product> getProductWithImages(Long id) {
-        Optional<Product> productOpt = productRepository.findById(id);
-        if (productOpt.isPresent()) {
-            Product product = productOpt.get();
-            // Force loading of images (since it's LAZY)
-            if (product.getImages() != null) {
-                product.getImages().size(); // This triggers the lazy loading
-            }
-            return Optional.of(product);
-        }
-        return Optional.empty();
     }
 }

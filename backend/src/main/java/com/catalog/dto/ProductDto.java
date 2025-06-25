@@ -12,25 +12,24 @@ public class ProductDto {
     private String description;
     private BigDecimal price;
     private String category;
-    private String imageUrl;
+    private String primaryImageUrl; // Primary image URL from uploaded images
     private BigDecimal rating;
     private Boolean inStock;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Map<String, List<String>> filterValues;
-    private List<ProductImageDto> images;
+    private List<ProductImageDto> images; // Add images list
     
     public ProductDto() {}
     
     public ProductDto(Long id, String name, String description, BigDecimal price, String category,
-                     String imageUrl, BigDecimal rating, Boolean inStock, 
+                     BigDecimal rating, Boolean inStock, 
                      LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.price = price;
         this.category = category;
-        this.imageUrl = imageUrl;
         this.rating = rating;
         this.inStock = inStock;
         this.createdAt = createdAt;
@@ -78,12 +77,12 @@ public class ProductDto {
         this.category = category;
     }
     
-    public String getImageUrl() {
-        return imageUrl;
+    public String getPrimaryImageUrl() {
+        return primaryImageUrl;
     }
     
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
+    public void setPrimaryImageUrl(String primaryImageUrl) {
+        this.primaryImageUrl = primaryImageUrl;
     }
     
     public BigDecimal getRating() {

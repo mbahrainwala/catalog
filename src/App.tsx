@@ -1,21 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, ShoppingBag, Star, Heart, Eye, User, LogOut, Settings } from 'lucide-react';
+import { Search, Filter, ShoppingBag, Star, Heart, Eye, User, LogOut, Settings, Package } from 'lucide-react';
 import LoginModal from './components/LoginModal';
 import AdminPanel from './components/AdminPanel';
 import ProductFilters from './components/ProductFilters';
 import ProductDetails from './components/ProductDetails';
-
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  imageUrl: string;
-  rating: number;
-  inStock: boolean;
-  images?: ProductImage[];
-}
 
 interface ProductImage {
   id: number;
@@ -23,6 +11,20 @@ interface ProductImage {
   altText: string;
   displayOrder: number;
   isPrimary: boolean;
+  originalFilename: string;
+}
+
+interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  primaryImageUrl?: string; // Primary image URL from uploaded images
+  rating: number;
+  inStock: boolean;
+  images?: ProductImage[]; // Add images array
+  filterValues?: Record<string, string[]>;
 }
 
 interface User {
@@ -212,12 +214,30 @@ function App() {
     setSelectedProductId(productId);
   };
 
-  const getProductDisplayImage = (product: Product) => {
-    if (product.images && product.images.length > 0) {
-      const primaryImage = product.images.find(img => img.isPrimary);
-      return primaryImage ? primaryImage.imageUrl : product.images[0].imageUrl;
+  // Get the display image URL for a product with placeholder fallback
+  const getProductImageUrl = (product: Product) => {
+    // Priority: primaryImageUrl > placeholder
+    if (product.primaryImageUrl) {
+      return product.primaryImageUrl;
     }
-    return product.imageUrl;
+    
+    // Return placeholder image based on category
+    return getPlaceholderImage(product.category);
+  };
+
+  // Get placeholder image based on category
+  const getPlaceholderImage = (category: string) => {
+    const placeholders = {
+      'electronics': 'https://images.pexels.com/photos/356056/pexels-photo-356056.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'clothing': 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'accessories': 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'home': 'https://images.pexels.com/photos/1000084/pexels-photo-1000084.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'sports': 'https://images.pexels.com/photos/3822864/pexels-photo-3822864.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'food': 'https://images.pexels.com/photos/918327/pexels-photo-918327.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'default': 'https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=500'
+    };
+    
+    return placeholders[category.toLowerCase()] || placeholders['default'];
   };
 
   const renderStars = (rating: number) => {
@@ -406,16 +426,25 @@ function App() {
                         {/* Product Image */}
                         <div className="relative overflow-hidden">
                           <img
-                            src={getProductDisplayImage(product)}
+                            src={getProductImageUrl(product)}
                             alt={product.name}
                             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
                             <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                              <button className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors">
+                              <button 
+                                className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleProductClick(product.id);
+                                }}
+                              >
                                 <Eye className="h-5 w-5 text-gray-700" />
                               </button>
-                              <button className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors">
+                              <button 
+                                className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <Heart className="h-5 w-5 text-gray-700" />
                               </button>
                             </div>
@@ -424,6 +453,14 @@ function App() {
                             <span className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-medium rounded-full">
                               Out of Stock
                             </span>
+                          )}
+                          {!product.primaryImageUrl && (
+                            <div className="absolute top-3 right-3">
+                              <div className="bg-gray-800 bg-opacity-75 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
+                                <Package className="h-3 w-3" />
+                                <span>No Image</span>
+                              </div>
+                            </div>
                           )}
                         </div>
 

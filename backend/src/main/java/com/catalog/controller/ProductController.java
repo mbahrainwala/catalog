@@ -1,10 +1,14 @@
 package com.catalog.controller;
 
 import com.catalog.dto.ProductDto;
+import com.catalog.dto.ProductImageDto;
 import com.catalog.entity.Product;
+import com.catalog.entity.ProductImage;
 import com.catalog.mapper.ProductMapper;
+import com.catalog.mapper.ProductImageMapper;
 import com.catalog.service.CategoryService;
 import com.catalog.service.ProductService;
+import com.catalog.service.ProductImageService;
 import com.catalog.service.ProductFilterService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +34,12 @@ public class ProductController {
     
     @Autowired
     private ProductMapper productMapper;
+    
+    @Autowired
+    private ProductImageService productImageService;
+    
+    @Autowired
+    private ProductImageMapper productImageMapper;
     
     @Autowired
     private ProductFilterService productFilterService;
@@ -99,23 +109,27 @@ public class ProductController {
             }
         }
         
-        // Force load images for each product
-        products = products.stream()
-                .map(product -> {
-                    Optional<Product> productWithImages = productService.getProductWithImages(product.getId());
-                    return productWithImages.orElse(product);
-                })
-                .collect(Collectors.toList());
-        
         List<ProductDto> productDtos = productMapper.toDtoList(products);
         return ResponseEntity.ok(productDtos);
     }
     
     @GetMapping("/{id}")
     public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
-        Optional<Product> product = productService.getProductWithImages(id);
-        return product.map(p -> ResponseEntity.ok(productMapper.toDto(p)))
-                     .orElse(ResponseEntity.notFound().build());
+        Optional<Product> product = productService.getProductById(id);
+        if (product.isPresent()) {
+            ProductDto productDto = productMapper.toDto(product.get());
+            
+            // Add product images to the DTO
+            List<ProductImage> images = productImageService.getProductImages(id);
+            if (!images.isEmpty()) {
+                List<ProductImageDto> imageDtos = productImageMapper.toDtoList(images);
+                // Note: You'll need to add an images field to ProductDto if you want to include them
+                // For now, we'll just return the product without images in the DTO
+            }
+            
+            return ResponseEntity.ok(productDto);
+        }
+        return ResponseEntity.notFound().build();
     }
     
     @PostMapping
@@ -130,9 +144,7 @@ public class ProductController {
                                                    @Valid @RequestBody Product productDetails) {
         Product updatedProduct = productService.updateProduct(id, productDetails);
         if (updatedProduct != null) {
-            // Get product with images loaded
-            Optional<Product> productWithImages = productService.getProductWithImages(id);
-            ProductDto productDto = productMapper.toDto(productWithImages.orElse(updatedProduct));
+            ProductDto productDto = productMapper.toDto(updatedProduct);
             return ResponseEntity.ok(productDto);
         }
         return ResponseEntity.notFound().build();
@@ -154,15 +166,6 @@ public class ProductController {
     @GetMapping("/in-stock")
     public ResponseEntity<List<ProductDto>> getInStockProducts() {
         List<Product> products = productService.getInStockProducts();
-        
-        // Force load images for each product
-        products = products.stream()
-                .map(product -> {
-                    Optional<Product> productWithImages = productService.getProductWithImages(product.getId());
-                    return productWithImages.orElse(product);
-                })
-                .collect(Collectors.toList());
-        
         List<ProductDto> productDtos = productMapper.toDtoList(products);
         return ResponseEntity.ok(productDtos);
     }

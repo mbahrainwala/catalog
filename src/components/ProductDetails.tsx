@@ -1,18 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, ShoppingBag, Heart, Share2, ChevronLeft, ChevronRight, Truck, Shield, RotateCcw } from 'lucide-react';
-
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  imageUrl: string;
-  rating: number;
-  inStock: boolean;
-  images?: ProductImage[];
-  filterValues?: Record<string, string[]>;
-}
+import { X, Star, ShoppingBag, Heart, Share2, ChevronLeft, ChevronRight, Truck, Shield, RotateCcw, Package } from 'lucide-react';
 
 interface ProductImage {
   id: number;
@@ -20,6 +7,20 @@ interface ProductImage {
   altText: string;
   displayOrder: number;
   isPrimary: boolean;
+  originalFilename: string;
+}
+
+interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  primaryImageUrl?: string;
+  rating: number;
+  inStock: boolean;
+  images?: ProductImage[];
+  filterValues?: Record<string, string[]>;
 }
 
 interface ProductDetailsProps {
@@ -29,6 +30,7 @@ interface ProductDetailsProps {
 
 const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) => {
   const [product, setProduct] = useState<Product | null>(null);
+  const [productImages, setProductImages] = useState<ProductImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -36,6 +38,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
 
   useEffect(() => {
     fetchProduct();
+    fetchProductImages();
   }, [productId]);
 
   const fetchProduct = async () => {
@@ -44,17 +47,31 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
       if (response.ok) {
         const data = await response.json();
         setProduct(data);
-        
-        // Set initial selected image to primary image or first image
-        if (data.images && data.images.length > 0) {
-          const primaryIndex = data.images.findIndex((img: ProductImage) => img.isPrimary);
-          setSelectedImageIndex(primaryIndex >= 0 ? primaryIndex : 0);
-        }
       } else {
         setError('Product not found');
       }
     } catch (err) {
       setError('Failed to load product');
+    }
+  };
+
+  const fetchProductImages = async () => {
+    try {
+      // Use the public endpoint for viewing product images
+      const response = await fetch(`/api/products/${productId}/images`);
+      if (response.ok) {
+        const images = await response.json();
+        setProductImages(images);
+        
+        // Set initial selected image to primary image or first image
+        if (images.length > 0) {
+          const primaryIndex = images.findIndex((img: ProductImage) => img.isPrimary);
+          setSelectedImageIndex(primaryIndex >= 0 ? primaryIndex : 0);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load product images:', err);
+      // Don't set error here as images are optional
     } finally {
       setLoading(false);
     }
@@ -69,12 +86,32 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
     ));
   };
 
+  // Get placeholder image based on category
+  const getPlaceholderImage = (category: string) => {
+    const placeholders = {
+      'electronics': 'https://images.pexels.com/photos/356056/pexels-photo-356056.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'clothing': 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'accessories': 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'home': 'https://images.pexels.com/photos/1000084/pexels-photo-1000084.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'sports': 'https://images.pexels.com/photos/3822864/pexels-photo-3822864.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'food': 'https://images.pexels.com/photos/918327/pexels-photo-918327.jpeg?auto=compress&cs=tinysrgb&w=500',
+      'default': 'https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=500'
+    };
+    
+    return placeholders[category.toLowerCase()] || placeholders['default'];
+  };
+
   const getDisplayImages = () => {
-    if (product?.images && product.images.length > 0) {
-      return product.images.sort((a, b) => a.displayOrder - b.displayOrder);
+    if (productImages && productImages.length > 0) {
+      return productImages.sort((a, b) => a.displayOrder - b.displayOrder);
     }
-    if (product?.imageUrl) {
-      return [{ id: 0, imageUrl: product.imageUrl, altText: product.name, displayOrder: 0, isPrimary: true }];
+    if (product?.primaryImageUrl) {
+      return [{ id: 0, imageUrl: product.primaryImageUrl, altText: product.name, displayOrder: 0, isPrimary: true, originalFilename: product.name }];
+    }
+    // Return placeholder image
+    if (product) {
+      const placeholderUrl = getPlaceholderImage(product.category);
+      return [{ id: 0, imageUrl: placeholderUrl, altText: product.name, displayOrder: 0, isPrimary: true, originalFilename: 'Placeholder' }];
     }
     return [];
   };
@@ -124,6 +161,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
 
   const displayImages = getDisplayImages();
   const currentImage = displayImages[selectedImageIndex];
+  const hasUploadedImages = productImages && productImages.length > 0;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -175,6 +213,15 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ productId, onClose }) =
                     <span className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
                       Out of Stock
                     </span>
+                  </div>
+                )}
+
+                {!hasUploadedImages && (
+                  <div className="absolute top-4 right-4">
+                    <div className="bg-gray-800 bg-opacity-75 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
+                      <Package className="h-3 w-3" />
+                      <span>Placeholder</span>
+                    </div>
                   </div>
                 )}
               </div>

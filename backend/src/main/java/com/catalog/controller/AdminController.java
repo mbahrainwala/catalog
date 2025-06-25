@@ -61,37 +61,41 @@ public class AdminController {
     // Product Management - Return DTOs
     @GetMapping("/products")
     public ResponseEntity<List<ProductDto>> getAllProducts() {
-        List<Product> products = productService.getAllProducts();
-        
-        // Force load images for each product
-        products = products.stream()
-                .map(product -> {
-                    Optional<Product> productWithImages = productService.getProductWithImages(product.getId());
-                    return productWithImages.orElse(product);
-                })
-                .toList();
-        
-        List<ProductDto> productDtos = productMapper.toDtoList(products);
-        return ResponseEntity.ok(productDtos);
+        try {
+            List<Product> products = productService.getAllProducts();
+            List<ProductDto> productDtos = productMapper.toDtoList(products);
+            return ResponseEntity.ok(productDtos);
+        } catch (Exception e) {
+            System.err.println("Error in getAllProducts: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
     
     @GetMapping("/products/{id}")
     public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
-        Optional<Product> product = productService.getProductWithImages(id);
-        return product.map(p -> ResponseEntity.ok(productMapper.toDto(p)))
-                     .orElse(ResponseEntity.notFound().build());
+        try {
+            Optional<Product> product = productService.getProductById(id);
+            return product.map(p -> ResponseEntity.ok(productMapper.toDto(p)))
+                         .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            System.err.println("Error in getProductById: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
     
     @PostMapping("/products")
-    public ResponseEntity<ProductDto> createProduct(@Valid @RequestBody Map<String, Object> productData) {
+    public ResponseEntity<?> createProduct(@Valid @RequestBody Map<String, Object> productData) {
         try {
+            System.out.println("Creating product with data: " + productData);
+            
             // Extract product data
             Product product = new Product();
             product.setName((String) productData.get("name"));
             product.setDescription((String) productData.get("description"));
             product.setPrice(new java.math.BigDecimal(productData.get("price").toString()));
             product.setCategory((String) productData.get("category"));
-            product.setImageUrl((String) productData.get("imageUrl"));
             
             if (productData.get("rating") != null) {
                 product.setRating(new java.math.BigDecimal(productData.get("rating").toString()));
@@ -101,30 +105,37 @@ public class AdminController {
             
             // Save product first
             Product savedProduct = productService.saveProduct(product);
+            System.out.println("Product saved with ID: " + savedProduct.getId());
             
             // Handle filter values if provided
             @SuppressWarnings("unchecked")
             Map<String, List<String>> filterData = (Map<String, List<String>>) productData.get("filterValues");
             if (filterData != null && !filterData.isEmpty()) {
+                System.out.println("Updating product filters: " + filterData);
                 productFilterService.updateProductFilters(savedProduct, filterData);
             }
             
-            // Get product with images and filters loaded
-            Optional<Product> productWithDetails = productService.getProductWithImages(savedProduct.getId());
-            ProductDto productDto = productMapper.toDto(productWithDetails.orElse(savedProduct));
+            ProductDto productDto = productMapper.toDto(savedProduct);
+            
+            System.out.println("Product created successfully");
             return ResponseEntity.status(HttpStatus.CREATED).body(productDto);
+            
         } catch (Exception e) {
-            e.printStackTrace(); // Add logging to see the actual error
+            System.err.println("Error creating product: " + e.getMessage());
+            e.printStackTrace();
+            
             Map<String, String> response = new HashMap<>();
             response.put("message", "Failed to create product: " + e.getMessage());
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
     
     @PutMapping("/products/{id}")
-    public ResponseEntity<ProductDto> updateProduct(@PathVariable Long id, 
-                                                   @Valid @RequestBody Map<String, Object> productData) {
+    public ResponseEntity<?> updateProduct(@PathVariable Long id, 
+                                          @Valid @RequestBody Map<String, Object> productData) {
         try {
+            System.out.println("Updating product " + id + " with data: " + productData);
+            
             Optional<Product> existingProductOpt = productService.getProductById(id);
             if (!existingProductOpt.isPresent()) {
                 return ResponseEntity.notFound().build();
@@ -135,7 +146,6 @@ public class AdminController {
             product.setDescription((String) productData.get("description"));
             product.setPrice(new java.math.BigDecimal(productData.get("price").toString()));
             product.setCategory((String) productData.get("category"));
-            product.setImageUrl((String) productData.get("imageUrl"));
             
             if (productData.get("rating") != null) {
                 product.setRating(new java.math.BigDecimal(productData.get("rating").toString()));
@@ -150,24 +160,36 @@ public class AdminController {
             @SuppressWarnings("unchecked")
             Map<String, List<String>> filterData = (Map<String, List<String>>) productData.get("filterValues");
             if (filterData != null) {
+                System.out.println("Updating product filters: " + filterData);
                 productFilterService.updateProductFilters(updatedProduct, filterData);
             }
             
-            // Get product with images and filters loaded
-            Optional<Product> productWithDetails = productService.getProductWithImages(id);
-            ProductDto productDto = productMapper.toDto(productWithDetails.orElse(updatedProduct));
+            ProductDto productDto = productMapper.toDto(updatedProduct);
+            
+            System.out.println("Product updated successfully");
             return ResponseEntity.ok(productDto);
+            
         } catch (Exception e) {
-            e.printStackTrace(); // Add logging to see the actual error
-            return ResponseEntity.badRequest().build();
+            System.err.println("Error updating product: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Failed to update product: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
     
     @DeleteMapping("/products/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        boolean deleted = productService.deleteProduct(id);
-        return deleted ? ResponseEntity.noContent().build() 
-                      : ResponseEntity.notFound().build();
+        try {
+            boolean deleted = productService.deleteProduct(id);
+            return deleted ? ResponseEntity.noContent().build() 
+                          : ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            System.err.println("Error deleting product: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
     
     // Category Management - Return DTOs

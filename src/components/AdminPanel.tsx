@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, Package, Tags, Filter as FilterIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Package, Tags, Filter as FilterIcon, Image as ImageIcon } from 'lucide-react';
 import CategoryManager from './CategoryManager';
 import FilterManager from './FilterManager';
 import ImageUpload from './ImageUpload';
@@ -10,11 +10,10 @@ interface Product {
   description: string;
   price: number;
   category: string;
-  imageUrl: string;
   rating: number;
   inStock: boolean;
+  primaryImageUrl?: string;
   filterValues?: Record<string, string[]>;
-  images?: ProductImage[];
 }
 
 interface ProductImage {
@@ -64,6 +63,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [managingImagesFor, setManagingImagesFor] = useState<number | null>(null);
+  const [productImages, setProductImages] = useState<ProductImage[]>([]);
   const [error, setError] = useState('');
 
   const emptyProduct: Product = {
@@ -71,7 +72,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
     description: '',
     price: 0,
     category: '',
-    imageUrl: '',
     rating: 0,
     inStock: true,
     filterValues: {}
@@ -157,6 +157,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
     return [];
   };
 
+  const fetchProductImages = async (productId: number) => {
+    try {
+      console.log('AdminPanel: Fetching images for product', productId);
+      const response = await fetch(`/api/admin/products/${productId}/images`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const images = await response.json();
+        console.log('AdminPanel: Fetched images:', images);
+        setProductImages(images);
+      } else {
+        console.error('AdminPanel: Failed to fetch images:', response.status);
+        setProductImages([]); // Set empty array on error
+      }
+    } catch (err) {
+      console.error('AdminPanel: Failed to fetch product images:', err);
+      setProductImages([]); // Set empty array on error
+    }
+  };
+
   const handleSave = async (product: Product) => {
     try {
       console.log('Saving product with data:', product); // Debug log
@@ -209,6 +232,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
     } catch (err) {
       setError('Network error');
     }
+  };
+
+  const handleManageImages = (productId: number) => {
+    console.log('AdminPanel: Opening image management for product', productId);
+    setManagingImagesFor(productId);
+    // Fetch images when opening the modal
+    fetchProductImages(productId);
+  };
+
+  const handleImagesChange = () => {
+    console.log('AdminPanel: Images changed, refreshing...');
+    if (managingImagesFor) {
+      // Refresh the images for the current product
+      fetchProductImages(managingImagesFor);
+    }
+    // Also refresh the products list to update primary image URLs
+    fetchProducts();
+  };
+
+  // Get placeholder image based on category
+  const getPlaceholderImage = (category: string) => {
+    const placeholders = {
+      'electronics': 'https://images.pexels.com/photos/356056/pexels-photo-356056.jpeg?auto=compress&cs=tinysrgb&w=100',
+      'clothing': 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=100',
+      'accessories': 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=100',
+      'home': 'https://images.pexels.com/photos/1000084/pexels-photo-1000084.jpeg?auto=compress&cs=tinysrgb&w=100',
+      'sports': 'https://images.pexels.com/photos/3822864/pexels-photo-3822864.jpeg?auto=compress&cs=tinysrgb&w=100',
+      'food': 'https://images.pexels.com/photos/918327/pexels-photo-918327.jpeg?auto=compress&cs=tinysrgb&w=100',
+      'default': 'https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=100'
+    };
+    
+    return placeholders[category.toLowerCase()] || placeholders['default'];
   };
 
   const ProductForm: React.FC<{ product: Product; onSave: (product: Product) => void; onCancel: () => void }> = ({
@@ -267,11 +322,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
       });
     };
 
-    const handleImagesChange = () => {
-      // Refresh the products list to get updated image data
-      fetchProducts();
-    };
-
     const activeCategoryNames = categories
       .filter(cat => cat.active)
       .sort((a, b) => a.displayOrder - b.displayOrder)
@@ -279,7 +329,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h3 className="text-xl font-bold text-gray-900">
               {product.id ? 'Edit Product' : 'Add New Product'}
@@ -293,7 +343,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Basic Product Information */}
               <div className="space-y-4">
                 <h4 className="text-lg font-medium text-gray-900">Basic Information</h4>
@@ -377,22 +427,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Legacy Image URL (Optional)
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.imageUrl}
-                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Use image upload below instead of URL when possible
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Stock Status
                   </label>
                   <select
@@ -404,66 +438,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                     <option value="false">Out of Stock</option>
                   </select>
                 </div>
-
-                {/* Filter Values */}
-                <div>
-                  <h5 className="text-md font-medium text-gray-900 mb-3">Filter Values</h5>
-                  
-                  {formData.category ? (
-                    categoryFilters.length > 0 ? (
-                      <div className="space-y-4 max-h-64 overflow-y-auto">
-                        {categoryFilters.map(filter => (
-                          <div key={filter.id} className="border border-gray-200 rounded-lg p-3">
-                            <h6 className="font-medium text-gray-900 mb-2">{filter.displayName}</h6>
-                            <div className="space-y-1">
-                              {filter.filterValues
-                                .filter(fv => fv.active)
-                                .sort((a, b) => a.displayOrder - b.displayOrder)
-                                .map(filterValue => (
-                                  <label
-                                    key={filterValue.id}
-                                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedFilterValues[filter.name]?.includes(filterValue.value) || false}
-                                      onChange={(e) => handleFilterValueChange(filter.name, filterValue.value, e.target.checked)}
-                                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <span className="text-sm text-gray-700">{filterValue.displayValue}</span>
-                                  </label>
-                                ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 text-gray-500 text-sm">
-                        No filters available for this category.
-                      </div>
-                    )
-                  ) : (
-                    <div className="text-center py-4 text-gray-500 text-sm">
-                      Please select a category first to see available filters.
-                    </div>
-                  )}
-                </div>
               </div>
 
-              {/* Image Upload */}
+              {/* Filter Values */}
               <div className="space-y-4">
-                <h4 className="text-lg font-medium text-gray-900">Product Images</h4>
+                <h4 className="text-lg font-medium text-gray-900">Filter Values</h4>
                 
-                {product.id ? (
-                  <ImageUpload
-                    productId={product.id}
-                    images={product.images || []}
-                    token={token}
-                    onImagesChange={handleImagesChange}
-                  />
+                {formData.category ? (
+                  categoryFilters.length > 0 ? (
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {categoryFilters.map(filter => (
+                        <div key={filter.id} className="border border-gray-200 rounded-lg p-4">
+                          <h5 className="font-medium text-gray-900 mb-3">{filter.displayName}</h5>
+                          <div className="space-y-2">
+                            {filter.filterValues
+                              .filter(fv => fv.active)
+                              .sort((a, b) => a.displayOrder - b.displayOrder)
+                              .map(filterValue => (
+                                <label
+                                  key={filterValue.id}
+                                  className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedFilterValues[filter.name]?.includes(filterValue.value) || false}
+                                    onChange={(e) => handleFilterValueChange(filter.name, filterValue.value, e.target.checked)}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <span className="text-sm text-gray-700">{filterValue.displayValue}</span>
+                                </label>
+                              ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No filters available for this category.</p>
+                      <p className="text-sm mt-1">You can add filters to this category in the Categories tab.</p>
+                    </div>
+                  )
                 ) : (
-                  <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
-                    <p>Save the product first to upload images</p>
+                  <div className="text-center py-8 text-gray-500">
+                    <p>Please select a category first to see available filters.</p>
                   </div>
                 )}
               </div>
@@ -491,12 +508,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
     );
   };
 
-  const getProductDisplayImage = (product: Product) => {
-    if (product.images && product.images.length > 0) {
-      const primaryImage = product.images.find(img => img.isPrimary);
-      return primaryImage ? primaryImage.imageUrl : product.images[0].imageUrl;
-    }
-    return product.imageUrl;
+  const ImageManagementModal: React.FC<{ productId: number; onClose: () => void }> = ({ productId, onClose }) => {
+    const product = products.find(p => p.id === productId);
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <h3 className="text-xl font-bold text-gray-900">
+              Manage Images for "{product?.name}"
+            </h3>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+          </div>
+
+          <div className="p-6">
+            <ImageUpload
+              productId={productId}
+              images={productImages}
+              token={token}
+              onImagesChange={handleImagesChange}
+            />
+          </div>
+
+          <div className="flex justify-end p-6 border-t border-gray-200">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -590,9 +639,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                       Stock
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Images
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Filters
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -607,7 +653,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                         <div className="flex items-center">
                           <img
                             className="h-10 w-10 rounded-lg object-cover"
-                            src={getProductDisplayImage(product)}
+                            src={product.primaryImageUrl || getPlaceholderImage(product.category)}
                             alt={product.name}
                           />
                           <div className="ml-4">
@@ -637,9 +683,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                           {product.inStock ? 'In Stock' : 'Out of Stock'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {product.images ? product.images.length : 0} images
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-xs text-gray-500">
                           {product.filterValues && Object.keys(product.filterValues).length > 0 ? (
@@ -657,6 +700,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
+                          <button
+                            onClick={() => product.id && handleManageImages(product.id)}
+                            className="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded"
+                            title="Manage images"
+                          >
+                            <ImageIcon className="h-4 w-4" />
+                          </button>
                           <button
                             onClick={() => setEditingProduct(product)}
                             className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
@@ -685,6 +735,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ token }) => {
               onCancel={() => {
                 setEditingProduct(null);
                 setIsCreating(false);
+              }}
+            />
+          )}
+
+          {managingImagesFor && (
+            <ImageManagementModal
+              productId={managingImagesFor}
+              onClose={() => {
+                setManagingImagesFor(null);
+                setProductImages([]);
               }}
             />
           )}
